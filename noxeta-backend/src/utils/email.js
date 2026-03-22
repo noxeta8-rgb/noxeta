@@ -1,18 +1,6 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-const transporter = nodemailer.createTransport({
-  host:   process.env.EMAIL_HOST,
-  port:   Number(process.env.EMAIL_PORT),
-  secure: process.env.EMAIL_PORT === '465',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
-
-// ─────────────────────────────────────────────
-//  Email Templates
-// ─────────────────────────────────────────────
 const baseLayout = (content) => `
 <!DOCTYPE html>
 <html lang="en">
@@ -71,10 +59,7 @@ const TEMPLATES = {
     <table class="order-table">
       <thead>
         <tr>
-          <th>Item</th>
-          <th>Size</th>
-          <th>Qty</th>
-          <th>Price</th>
+          <th>Item</th><th>Size</th><th>Qty</th><th>Price</th>
         </tr>
       </thead>
       <tbody>
@@ -111,15 +96,12 @@ const TEMPLATES = {
   `),
 };
 
-// ─────────────────────────────────────────────
-//  Send Email
-// ─────────────────────────────────────────────
 const sendEmail = async ({ to, subject, template, data, html }) => {
   const htmlContent = html || (TEMPLATES[template] ? TEMPLATES[template](data) : null);
   if (!htmlContent) throw new Error(`Unknown email template: ${template}`);
 
-  await transporter.sendMail({
-    from:    process.env.EMAIL_FROM,
+  await resend.emails.send({
+    from:    process.env.EMAIL_FROM || 'Noxeta <onboarding@resend.dev>',
     to,
     subject,
     html:    htmlContent,
