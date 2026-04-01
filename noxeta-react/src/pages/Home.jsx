@@ -183,10 +183,20 @@ export default function Home() {
       WEAR<br />THE<br />DARK
       <em>Premium Streetwear</em>
     </h1>
-    {/* Added 'readable-sub' class here */}
-    <p className="hero-sub readable-sub">
+
+    <p 
+      className="hero-sub" 
+      style={{ 
+        fontSize: '1.25rem', 
+        lineHeight: '1.6', 
+        opacity: 0.9, 
+        maxWidth: '500px',
+        marginBottom: '2rem' 
+      }}
+    >
       Crafted for those who exist between shadows and light. Each piece a statement. Each thread a rebellion.
     </p>
+
     <div className="hero-cta">
       <Link to="/shop" className="btn-primary">Shop Now →</Link>
       <a href="#story" className="btn-ghost"
