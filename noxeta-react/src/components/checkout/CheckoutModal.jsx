@@ -4,7 +4,7 @@ import { useAuth }  from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
 import { formatPrice } from '../../data/products'
 
-const RAZORPAY_KEY = 'GE95x3OAiRK6o1YFxCHH2hKo' // ← replace with your Razorpay key
+const RAZORPAY_KEY = 'xyz' // ← replace with your Razorpay key
 
 function loadRazorpay() {
   return new Promise((resolve) => {
@@ -17,8 +17,6 @@ function loadRazorpay() {
   })
 }
 
-// Payment methods shown on YOUR UI
-// All methods open Razorpay — user picks UPI/card/netbanking INSIDE Razorpay popup
 const METHODS = [
   {
     id: 'upi',
@@ -66,8 +64,6 @@ const METHODS = [
   },
 ]
 
-// Maps your method id → Razorpay's config key
-// Razorpay will open on that tab directly
 const RAZORPAY_METHOD_MAP = {
   upi:        { method: 'upi' },
   card:       { method: 'card' },
@@ -80,7 +76,7 @@ export default function CheckoutModal({ onClose }) {
   const [method,  setMethod] = useState('upi')
   const [success, setSuccess]= useState(null)
   const [paying,  setPaying] = useState(false)
-  const [addr,    setAddr]   = useState({ name:'', phone:'', line1:'', line2:'', city:'', state:'', pin:'' })
+  const [addr,    setAddr]   = useState({ name:'', phone:'', line1:'', line2:'', city:'', state:'', pincode:'' })
 
   const { cart, total, subtotal, shipping, clearCart } = useCart()
   const { user, token } = useAuth()
@@ -90,12 +86,14 @@ export default function CheckoutModal({ onClose }) {
 
   // ── Step 1: Address ─────────────────────────────────────
   const submitAddress = () => {
-    const { name, phone, line1, city, state, pin } = addr
-    if (!name||!phone||!line1||!city||!state||!pin) {
+    const { name, phone, line1, city, state, pincode } = addr
+    // Changed: !pin to !pincode
+    if (!name||!phone||!line1||!city||!state||!pincode) {
       showToast('Missing details', 'Please fill all required fields'); return
     }
     if (!/^\d{10}$/.test(phone)) { showToast('Invalid phone', 'Enter a valid 10-digit number'); return }
-    if (!/^\d{6}$/.test(pin))    { showToast('Invalid PIN',   'Enter a valid 6-digit PIN code'); return }
+    // Changed: pin to pincode
+    if (!/^\d{6}$/.test(pincode))    { showToast('Invalid pincode',   'Enter a valid 6-digit pincode'); return }
     setStep(2)
   }
 
@@ -103,7 +101,6 @@ export default function CheckoutModal({ onClose }) {
   const placeOrder = async () => {
     setPaying(true)
 
-    // Step 1: Save order to backend
     let orderId = null
     try {
       const res  = await fetch('/api/orders', {
@@ -124,7 +121,6 @@ export default function CheckoutModal({ onClose }) {
       return
     }
 
-    // Step 2: Load Razorpay SDK
     const loaded = await loadRazorpay()
     if (!loaded) {
       setPaying(false)
@@ -132,7 +128,6 @@ export default function CheckoutModal({ onClose }) {
       return
     }
 
-    // Step 3: Create Razorpay order on backend to get a signed order_id
     let rzpOrderId, rzpAmount, rzpKeyId
     try {
       const rzpRes = await fetch('/api/payments/create-order', {
@@ -159,28 +154,21 @@ export default function CheckoutModal({ onClose }) {
       name:        'NOXETA',
       description: 'Premium Streetwear',
       image:       '/images/favicon.svg',
-
-      // Pre-fill user details so customer doesn't retype
       prefill: {
         name:    user?.name  || addr.name,
         email:   user?.email || '',
         contact: addr.phone,
       },
-
-      // Open Razorpay directly on the correct tab based on what user selected
       config: {
         display: {
-          // Hide methods user didn't select — focus their experience
           hide: [],
           preferences: {
             show_default_blocks: true,
           },
         },
       },
-
       theme:  { color: '#c9a84c' },
       handler: async (response) => {
-        // Verify payment signature on backend before confirming
         try {
           const verifyRes = await fetch('/api/payments/verify', {
             method: 'POST',
@@ -212,7 +200,6 @@ export default function CheckoutModal({ onClose }) {
       },
     }
 
-    // If a specific method is selected, tell Razorpay to open on that tab
     if (RAZORPAY_METHOD_MAP[method]) {
       rzpConfig.config.display.default_block = method === 'upi' ? 'upi' : method
     }
@@ -228,7 +215,6 @@ export default function CheckoutModal({ onClose }) {
 
   const genId = () => 'NXL' + Date.now().toString().slice(-8)
 
-  // ── Success screen ───────────────────────────────────────
   if (success) return (
     <div className="success-screen">
       <div className="success-inner">
@@ -252,7 +238,6 @@ export default function CheckoutModal({ onClose }) {
         </div>
         <div className="modal-body">
 
-          {/* Steps */}
           <div className="checkout-steps">
             {[['01','Address'],['02','Payment'],['03','Confirm']].map(([num, label], i) => (
               <div key={i} className={`co-step${step===i+1?' active':step>i+1?' done':''}`}>
@@ -261,7 +246,6 @@ export default function CheckoutModal({ onClose }) {
             ))}
           </div>
 
-          {/* ── Step 1: Address ── */}
           {step === 1 && (
             <>
               {[
@@ -286,8 +270,9 @@ export default function CheckoutModal({ onClose }) {
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">PIN Code *</label>
-                <input className="form-input" placeholder="6-digit PIN" maxLength={6} value={addr.pin} onChange={setA('pin')} />
+                {/* Changed: label, value, and onChange to use 'pincode' */}
+                <label className="form-label">Pincode *</label>
+                <input className="form-input" placeholder="6-digit pincode" maxLength={6} value={addr.pincode} onChange={setA('pincode')} />
               </div>
               <button className="btn-primary btn-block" onClick={submitAddress}>
                 Continue to Payment →
@@ -295,10 +280,8 @@ export default function CheckoutModal({ onClose }) {
             </>
           )}
 
-          {/* ── Step 2: Payment ── */}
           {step === 2 && (
             <>
-              {/* Order summary */}
               <div className="order-summary">
                 <div style={{ fontFamily:'var(--font-m)', fontSize:'9px', letterSpacing:'2px', color:'var(--text-dim)', marginBottom:'12px' }}>
                   ORDER SUMMARY
@@ -326,7 +309,6 @@ export default function CheckoutModal({ onClose }) {
                 </div>
               </div>
 
-              {/* Payment method selector */}
               <div style={{ fontFamily:'var(--font-m)', fontSize:'9px', letterSpacing:'2px', color:'var(--text-dim)', marginBottom:'10px' }}>
                 SELECT PAYMENT METHOD
               </div>
@@ -356,7 +338,6 @@ export default function CheckoutModal({ onClose }) {
                 ))}
               </div>
 
-              {/* Helpful note for UPI */}
               {method === 'upi' && (
                 <div style={{ fontFamily:'var(--font-m)', fontSize:'8px', letterSpacing:'0.5px', color:'var(--text-dim)',
                   border:'1px solid var(--border)', padding:'10px 12px', marginBottom:'14px', lineHeight:'1.6' }}>
