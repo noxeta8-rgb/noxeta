@@ -5,7 +5,10 @@ import { useToast } from '../../context/ToastContext'
 import ImageSlider  from '../ui/ImageSlider'
 
 export default function ProductModal({ product: p, onClose }) {
-  const [size, setSize]   = useState(p.sizes?.[1] || p.sizes?.[0] || 'M')
+  const availableSizes = p.variants && p.variants.length > 0
+    ? p.variants.filter(v => Number(v.stock) > 0).map(v => v.size)
+    : (p.sizes || ['S','M','L','XL','XXL'])
+  const [size, setSize]   = useState(availableSizes[1] || availableSizes[0] || 'M')
   const { addToCart, setCartOpen } = useCart()
   const { showToast }     = useToast()
   
@@ -54,7 +57,10 @@ export default function ProductModal({ product: p, onClose }) {
 
             <div className="size-label">Select Size</div>
             <div className="sizes">
-              {(p.sizes || ['S','M','L','XL','XXL']).map(s => (
+              {(p.variants && p.variants.length > 0
+                ? p.variants.filter(v => Number(v.stock) > 0).map(v => v.size)
+                : (p.sizes || ['S','M','L','XL','XXL'])
+              ).map(s => (
                 <button key={s} className={`size-btn${size===s?' active':''}`} onClick={() => setSize(s)}>{s}</button>
               ))}
             </div>
