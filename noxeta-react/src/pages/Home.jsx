@@ -179,20 +179,6 @@ function StorySection() {
 
 /* ── Video Section ───────────────────── */
 function VideoSection() {
-  const videoRef = useRef(null)
-  const [playing, setPlaying] = useState(true)
-
-  const togglePlay = () => {
-    if (!videoRef.current) return
-    if (videoRef.current.paused) {
-      videoRef.current.play()
-      setPlaying(true)
-    } else {
-      videoRef.current.pause()
-      setPlaying(false)
-    }
-  }
-
   return (
     <section style={{ background: 'var(--bg)', overflow: 'hidden' }}>
       <div style={{ padding: '80px 40px 0', textAlign: 'center' }}>
@@ -211,49 +197,13 @@ function VideoSection() {
       }}>
         <div style={{ position: 'relative', width: '100%', maxHeight: '70vh', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', minHeight: '260px' }}>
           <video
-            ref={videoRef}
             src="/videos/noxeta-drop.mp4"
             loop
             playsInline
             autoPlay
             muted
             style={{ width: '100%', maxHeight: '70vh', objectFit: 'cover', display: 'block' }}
-            onPlay={() => setPlaying(true)}
-            onPause={() => setPlaying(false)}
           />
-          {/* Play / Pause overlay */}
-          <button
-            onClick={togglePlay}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            aria-label={playing ? 'Pause' : 'Play'}
-          >
-            {!playing && (
-              <div style={{
-                width: '72px',
-                height: '72px',
-                borderRadius: '50%',
-                background: 'rgba(0,0,0,0.6)',
-                border: '2px solid var(--accent)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backdropFilter: 'blur(4px)',
-              }}>
-                <span style={{ color: 'var(--accent)', fontSize: '28px', paddingLeft: '4px' }}>▶</span>
-              </div>
-            )}
-          </button>
           {/* Gradient overlays for cinematic feel */}
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, var(--bg) 0%, transparent 8%, transparent 92%, var(--bg) 100%)', pointerEvents: 'none' }} />
           <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '80px', background: 'linear-gradient(to top, var(--bg), transparent)', pointerEvents: 'none' }} />
