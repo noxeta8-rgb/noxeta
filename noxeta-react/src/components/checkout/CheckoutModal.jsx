@@ -4,7 +4,7 @@ import { useAuth }  from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
 import { formatPrice } from '../../data/products'
 
-const RAZORPAY_KEY = 'rzp_live_SYEjdrNyApEK5s' // ← replace with your Razorpay key
+const RAZORPAY_KEY = 'GE95x3OAiRK6o1YFxCHH2hKo' // ← replace with your Razorpay key
 
 function loadRazorpay() {
   return new Promise((resolve) => {
