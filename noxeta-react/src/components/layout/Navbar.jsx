@@ -57,8 +57,8 @@ export default function Navbar() {
         <ul className="nav-links">
           <li><NavLink to="/shop">Shop</NavLink></li>
           <li><NavLink to="/shop?cat=Track+Pants">Track Pants</NavLink></li>
-          <li><NavLink to="/shop?cat=Oversized+Tees">Tees</NavLink></li>
-          <li><NavLink to="/shop?cat=Co-ord+Sets">Co-ords</NavLink></li>
+          <li><NavLink to="/shop?cat=Tees">Tees</NavLink></li>
+          <li><NavLink to="/shop?cat=Co-ord+Sets">Cod set</NavLink></li>
           <li>
             <a href="#story" onClick={e => {
               e.preventDefault()
@@ -158,7 +158,7 @@ export default function Navbar() {
 
       {/* Mobile Nav */}
       <div className={`mobile-nav${mobileOpen ? ' open' : ''}`}>
-        {['Track Pants','Oversized Tees','Co-ord Sets','Acid Wash Tees','Waffle T-Shirts','Tank Tops','Vests'].map(cat => (
+        {['Track Pants','Oversized Tees','Cod Sets','Acid Wash Tees','Waffle T-Shirts','Tank Tops','Vests'].map(cat => (
           <Link key={cat} to={`/shop?cat=${encodeURIComponent(cat)}`} onClick={() => setMobileOpen(false)}>{cat}</Link>
         ))}
         {!user && (
