@@ -176,24 +176,27 @@ export default function Home() {
   return (
     <>
       {/* Hero */}
-      <section className="hero">
-        <div className="hero-left">
-          <p className="eyebrow">New Drop — SS 2026</p>
-          <h1 className="hero-title">
-            WEAR<br />THE<br />DARK
-            <em>Premium Streetwear</em>
-          </h1>
-          <p className="hero-sub">Crafted for those who exist between shadows and light. Each piece a statement. Each thread a rebellion.</p>
-          <div className="hero-cta">
-            <Link to="/shop" className="btn-primary">Shop Now →</Link>
-            <a href="#story" className="btn-ghost"
-              onClick={e => { e.preventDefault(); document.getElementById('story')?.scrollIntoView({ behavior:'smooth' }) }}>
-              Our Story
-            </a>
-          </div>
-        </div>
-        <HeroSlider products={products} />
-      </section>
+<section className="hero">
+  <div className="hero-left">
+    <p className="eyebrow">New Drop — SS 2026</p>
+    <h1 className="hero-title">
+      WEAR<br />THE<br />DARK
+      <em>Premium Streetwear</em>
+    </h1>
+    {/* Added 'readable-sub' class here */}
+    <p className="hero-sub readable-sub">
+      Crafted for those who exist between shadows and light. Each piece a statement. Each thread a rebellion.
+    </p>
+    <div className="hero-cta">
+      <Link to="/shop" className="btn-primary">Shop Now →</Link>
+      <a href="#story" className="btn-ghost"
+        onClick={e => { e.preventDefault(); document.getElementById('story')?.scrollIntoView({ behavior:'smooth' }) }}>
+        Our Story
+      </a>
+    </div>
+  </div>
+  <HeroSlider products={products} />
+</section>
 
       {/* Ticker */}
       <div className="ticker">
