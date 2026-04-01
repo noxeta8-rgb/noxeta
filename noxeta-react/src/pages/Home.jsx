@@ -112,14 +112,14 @@ function StorySection() {
     const doFlash = () => {
       setFlashing(true)
       flashCount = 0
-      const totalFlashes = 8  // how many rapid switches
+      const totalFlashes = 20  // how many rapid switches
       flashTimer = setInterval(() => {
         setIdx(i => (i + 1) % imgs.length)
         flashCount++
         if (flashCount >= totalFlashes) {
           clearInterval(flashTimer)
           setFlashing(false)
-          pauseTimer = setTimeout(doFlash, 2500)
+          pauseTimer = setTimeout(doFlash, 0)
         }
       }, 120)
     }
