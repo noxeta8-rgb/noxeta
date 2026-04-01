@@ -135,7 +135,7 @@ export const PRODUCTS = [
 
 export const CATEGORIES = [
   'Track Pants','Tees','Acid Wash Tees',
-  'Co-ord Sets','Waffle T-Shirts','Tank Tops',
+  'Cod Sets','Waffle T-Shirts','Tank Tops',
 ]
 
 export const SIZES = ['S','M','L','XL','XXL']
