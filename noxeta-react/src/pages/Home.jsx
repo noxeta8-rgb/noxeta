@@ -100,7 +100,8 @@ function CatsGrid({ products = [] }) {
 function StorySection() {
   const [idx, setIdx] = useState(0)
   const [flashing, setFlashing] = useState(false)
-  const imgs = ['/images/story/1.jpg', '/images/story/2.jpg', '/images/story/3.jpg', '/images/story/4.jpg', '/images/story/5.jpg']
+  const imgs = ['/images/story/1.jpg', '/images/story/2.jpg', '/images/story/3.jpg', '/images/story/4.jpg', '/images/story/5.jpg','/images/story/6.jpg','/images/story/7.jpg','/images/story/8.jpg','/images/story/9.jpg','/images/story/10.jpg','/images/story/11.jpg','/images/story/13.jpg','/images/story/14.jpg','/images/story/15.jpg','/images/story/16.jpg','/images/story/17.jpg','/images/story/18.jpg','/images/story/19.jpg','/images/story/20.jpg','/images/story/21.jpg']
+
 
   useEffect(() => {
     // Fast flash cycle: rapid switches every 120ms for 1s, then pause 2.5s, repeat
