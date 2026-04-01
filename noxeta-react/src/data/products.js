@@ -13,7 +13,7 @@ export const PRODUCTS = [
   {
     id: 2, slug: 'flame-coord-set',
     name: 'Flame Co-ord Set',
-    category: 'Co-ord Sets', price: 2799, originalPrice: 3499,
+    category: 'Cod Sets', price: 2799, originalPrice: 3499,
     badge: 'New', featured: true, heroSlide: true,
     colors: ['#080808'], sizes: ['S','M','L','XL','XXL'],
     material: 'Cotton + Fleece Blend', fit: 'Oversized', gsm: 300,
