@@ -153,26 +153,29 @@ footer { background:var(--surface); padding:80px 80px 36px; border-top:1px solid
 .footer-bottom { border-top:1px solid var(--border); padding-top:28px; display:flex; justify-content:space-between; align-items:center; font-family:var(--font-m); font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); }
 
 /* HERO */
-.hero { height:100vh; max-height:700px; min-height:600px; display:grid; grid-template-columns:1fr 1fr; padding-top:72px; position:relative; overflow:hidden; }
+.hero { min-height:100vh; display:grid; grid-template-columns:1fr 1fr; padding-top:72px; position:relative; overflow:hidden; }
 .hero::before { content:''; position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse at 15% 60%,rgba(139,26,26,.14) 0%,transparent 55%),radial-gradient(ellipse at 85% 15%,rgba(201,168,76,.07) 0%,transparent 50%); }
-.hero-left { display:flex; flex-direction:column; justify-content:center; padding:0 48px 0 80px; position:relative; z-index:2; }
+.hero-left { display:flex; flex-direction:column; justify-content:center; padding:100px 48px 60px 80px; position:relative; z-index:2; }
 .eyebrow { font-family:var(--font-m); font-size:10px; letter-spacing:4px; color:var(--accent); text-transform:uppercase; margin-bottom:20px; animation:fadeUp .7s .2s ease both; }
 .hero-title { font-family:var(--font-d); font-size:clamp(70px,8vw,120px); line-height:.9; letter-spacing:2px; animation:fadeUp .7s .35s ease both; }
 .hero-title em { font-family:var(--font-b); font-style:italic; font-weight:300; color:var(--accent); font-size:.55em; display:block; letter-spacing:10px; margin-top:10px; }
 .hero-sub { font-size:16px; font-weight:300; color:var(--text-dim); max-width:380px; margin-top:28px; line-height:1.8; animation:fadeUp .7s .5s ease both; }
 .hero-cta { display:flex; gap:14px; margin-top:44px; animation:fadeUp .7s .65s ease both; }
-.hero-right { position:relative; overflow:hidden; animation:fadeIn 1.2s .3s ease both; height:100%; }
+.hero-right { position:relative; overflow:hidden; animation:fadeIn 1.2s .3s ease both; min-height:100vh; }
 .hero-right::after { content:''; position:absolute; inset:0; pointer-events:none; background:linear-gradient(to right,var(--bg) 0%,transparent 12%),linear-gradient(to top,var(--bg) 0%,transparent 20%); }
 .hero-slider-wrap { width:100%; height:100%; overflow:hidden; }
 .hero-slides { display:flex; height:100%; transition:transform .8s cubic-bezier(.77,0,.18,1); }
 .hero-slide { min-width:100%; height:100%; flex-shrink:0; }
-.hero-slide img { width:100%; height:100%; object-fit:cover; object-position:center 20%; }
+.hero-slide img { width:100%; height:100%; object-fit:cover; object-position:top center; }
 .hero-dots { position:absolute; bottom:32px; right:32px; z-index:10; display:flex; gap:8px; }
 .hero-dot { width:20px; height:2px; background:rgba(255,255,255,.2); border:none; transition:all var(--transition); cursor:pointer; }
 .hero-dot.active { width:40px; background:var(--accent); }
 .hero-arrows { position:absolute; bottom:28px; left:80px; z-index:10; display:flex; gap:10px; animation:fadeUp .7s 1s ease both; }
 .h-arr { width:36px; height:36px; border:1px solid var(--border); background:rgba(8,8,8,.6); backdrop-filter:blur(10px); color:var(--text-dim); font-size:16px; display:flex; align-items:center; justify-content:center; transition:all var(--transition); cursor:pointer; }
 .h-arr:hover { border-color:var(--accent); color:var(--accent); }
+
+/* TICKER */
+.ticker { position:relative; z-index:1; margin-top:0; overflow:hidden; }
 
 /* CATEGORIES */
 .cats-section { background:var(--surface); }
@@ -241,7 +244,7 @@ footer { background:var(--surface); padding:80px 80px 36px; border-top:1px solid
 @media(max-width:1100px){ .products-grid{grid-template-columns:repeat(3,1fr)} .footer-grid{grid-template-columns:1fr 1fr;gap:36px} footer{padding:60px 40px 32px} .shop-grid{grid-template-columns:repeat(2,1fr)} }
 @media(max-width:900px){
   nav.nox-nav{padding:0 24px} .nav-links{display:none} .hamburger{display:flex}
-  .hero{grid-template-columns:1fr;min-height:auto} .hero-right{height:55vw} .hero-left{padding:80px 32px 48px} .hero-arrows{left:32px}
+  .hero{grid-template-columns:1fr;min-height:auto} .hero-right{min-height:60vw} .hero-left{padding:80px 32px 48px} .hero-arrows{left:32px}
   .cats-grid{grid-template-columns:repeat(2,1fr)} .cat-card.large{grid-row:span 1;aspect-ratio:3/4}
   .products-grid{grid-template-columns:repeat(2,1fr);gap:12px}
   .product-modal-inner{grid-template-columns:1fr}
