@@ -12,7 +12,7 @@ if (apiUrl) {
   window.fetch = async (...args) => {
     let [resource, config] = args;
     if (typeof resource === 'string' && resource.startsWith('/api')) {
-      resource = apiUrl + resource.replace('/api', '');
+      resource = apiUrl + resource;
     }
     return originalFetch(resource, config);
   };
