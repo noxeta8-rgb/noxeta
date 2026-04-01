@@ -50,7 +50,7 @@ router.post('/', protect, async (req, res, next) => {
       items:    orderItems,
       shipping,
       payment: {
-        method: paymentMethod || 'razorpay',
+        method: 'razorpay',
         status: 'pending',
       },
       subtotal,
