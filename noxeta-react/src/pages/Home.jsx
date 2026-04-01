@@ -179,7 +179,7 @@ function StorySection() {
 /* ── Video Section ───────────────────── */
 function VideoSection() {
   const videoRef = useRef(null)
-  const [playing, setPlaying] = useState(false)
+  const [playing, setPlaying] = useState(true)
 
   const togglePlay = () => {
     if (!videoRef.current) return
@@ -214,6 +214,8 @@ function VideoSection() {
             src="/videos/noxeta-drop.mp4"
             loop
             playsInline
+            autoPlay
+            muted
             style={{ width: '100%', maxHeight: '70vh', objectFit: 'cover', display: 'block' }}
             onPlay={() => setPlaying(true)}
             onPause={() => setPlaying(false)}
