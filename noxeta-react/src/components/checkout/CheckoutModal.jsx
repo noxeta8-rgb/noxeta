@@ -4,7 +4,8 @@ import { useAuth }  from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
 import { formatPrice } from '../../data/products'
 
-const RAZORPAY_KEY = 'rzp_live_SYEjdrNyApEK5s' // ← replace with your Razorpay key
+// FIX 1: Use env variable instead of hardcoded placeholder
+const RAZORPAY_KEY = import.meta.env.VITE_RAZORPAY_KEY_ID || ''
 
 function loadRazorpay() {
   return new Promise((resolve) => {
@@ -71,11 +72,15 @@ const RAZORPAY_METHOD_MAP = {
   wallet:     { method: 'wallet' },
 }
 
+// FIX 2: Use VITE_API_URL for all fetch calls so it works on Vercel
+const API = import.meta.env.VITE_API_URL || ''
+
 export default function CheckoutModal({ onClose }) {
   const [step,    setStep]   = useState(1)
   const [method,  setMethod] = useState('upi')
   const [success, setSuccess]= useState(null)
   const [paying,  setPaying] = useState(false)
+  // FIX 3: pincode (not pin) to match backend Order model
   const [addr,    setAddr]   = useState({ name:'', phone:'', line1:'', line2:'', city:'', state:'', pincode:'' })
 
   const { cart, total, subtotal, shipping, clearCart } = useCart()
@@ -87,13 +92,11 @@ export default function CheckoutModal({ onClose }) {
   // ── Step 1: Address ─────────────────────────────────────
   const submitAddress = () => {
     const { name, phone, line1, city, state, pincode } = addr
-    // Changed: !pin to !pincode
     if (!name||!phone||!line1||!city||!state||!pincode) {
       showToast('Missing details', 'Please fill all required fields'); return
     }
-    if (!/^\d{10}$/.test(phone)) { showToast('Invalid phone', 'Enter a valid 10-digit number'); return }
-    // Changed: pin to pincode
-    if (!/^\d{6}$/.test(pincode))    { showToast('Invalid pincode',   'Enter a valid 6-digit pincode'); return }
+    if (!/^\d{10}$/.test(phone))  { showToast('Invalid phone',   'Enter a valid 10-digit number'); return }
+    if (!/^\d{6}$/.test(pincode)) { showToast('Invalid pincode', 'Enter a valid 6-digit pincode'); return }
     setStep(2)
   }
 
@@ -103,21 +106,22 @@ export default function CheckoutModal({ onClose }) {
 
     let orderId = null
     try {
-      const res  = await fetch('/api/orders', {
+      // FIX 4: Use API base URL + always send paymentMethod as 'razorpay'
+      const res  = await fetch(`${API}/api/orders`, {
         method: 'POST',
         headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${token()}` },
         body: JSON.stringify({
           items: cart.map(i => ({ productId:i.id, name:i.name, size:i.size, quantity:i.qty })),
           shipping: addr,
-          paymentMethod: method,
+          paymentMethod: 'razorpay', // FIX 5: backend enum only accepts 'razorpay', not 'upi'/'card' etc.
         }),
       })
       const data = await res.json()
       orderId = data.order?.orderId
-      if (!orderId) throw new Error('No orderId returned')
+      if (!orderId) throw new Error(data.error || 'No orderId returned')
     } catch (err) {
       setPaying(false)
-      showToast('Error', 'Could not create order. Please try again.')
+      showToast('Error', err.message || 'Could not create order. Please try again.')
       return
     }
 
@@ -130,7 +134,7 @@ export default function CheckoutModal({ onClose }) {
 
     let rzpOrderId, rzpAmount, rzpKeyId
     try {
-      const rzpRes = await fetch('/api/payments/create-order', {
+      const rzpRes = await fetch(`${API}/api/payments/create-order`, {
         method: 'POST',
         headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${token()}` },
         body: JSON.stringify({ orderId }),
@@ -170,7 +174,7 @@ export default function CheckoutModal({ onClose }) {
       theme:  { color: '#c9a84c' },
       handler: async (response) => {
         try {
-          const verifyRes = await fetch('/api/payments/verify', {
+          const verifyRes = await fetch(`${API}/api/payments/verify`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` },
             body: JSON.stringify({
@@ -246,6 +250,7 @@ export default function CheckoutModal({ onClose }) {
             ))}
           </div>
 
+          {/* ── Step 1: Address ── */}
           {step === 1 && (
             <>
               {[
@@ -270,7 +275,6 @@ export default function CheckoutModal({ onClose }) {
                 </div>
               </div>
               <div className="form-group">
-                {/* Changed: label, value, and onChange to use 'pincode' */}
                 <label className="form-label">Pincode *</label>
                 <input className="form-input" placeholder="6-digit pincode" maxLength={6} value={addr.pincode} onChange={setA('pincode')} />
               </div>
@@ -280,6 +284,7 @@ export default function CheckoutModal({ onClose }) {
             </>
           )}
 
+          {/* ── Step 2: Payment ── */}
           {step === 2 && (
             <>
               <div className="order-summary">
