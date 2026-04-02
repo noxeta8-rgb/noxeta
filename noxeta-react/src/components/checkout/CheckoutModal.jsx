@@ -4,8 +4,7 @@ import { useAuth }  from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
 import { formatPrice } from '../../data/products'
 
-// FIX 1: Use env variable instead of hardcoded placeholder
-const RAZORPAY_KEY = import.meta.env.VITE_RAZORPAY_KEY_ID || ''
+const RAZORPAY_KEY = 'rzp_test_XXXXXXXXXX' // ← replace with your Razorpay key
 
 function loadRazorpay() {
   return new Promise((resolve) => {
@@ -18,6 +17,8 @@ function loadRazorpay() {
   })
 }
 
+// Payment methods shown on YOUR UI
+// All methods open Razorpay — user picks UPI/card/netbanking INSIDE Razorpay popup
 const METHODS = [
   {
     id: 'upi',
@@ -65,6 +66,8 @@ const METHODS = [
   },
 ]
 
+// Maps your method id → Razorpay's config key
+// Razorpay will open on that tab directly
 const RAZORPAY_METHOD_MAP = {
   upi:        { method: 'upi' },
   card:       { method: 'card' },
@@ -72,31 +75,31 @@ const RAZORPAY_METHOD_MAP = {
   wallet:     { method: 'wallet' },
 }
 
-// FIX 2: Use VITE_API_URL for all fetch calls so it works on Vercel
-const API = import.meta.env.VITE_API_URL || ''
-
 export default function CheckoutModal({ onClose }) {
   const [step,    setStep]   = useState(1)
   const [method,  setMethod] = useState('upi')
   const [success, setSuccess]= useState(null)
   const [paying,  setPaying] = useState(false)
-  // FIX 3: pincode (not pin) to match backend Order model
-  const [addr,    setAddr]   = useState({ name:'', phone:'', line1:'', line2:'', city:'', state:'', pincode:'' })
+  const [addr,    setAddr]   = useState({ name:'', phone:'', line1:'', line2:'', city:'', state:'', pin:'' })
 
   const { cart, total, subtotal, shipping, clearCart } = useCart()
   const { user, token } = useAuth()
   const { showToast }   = useToast()
 
-  const setA = k => e => setAddr(a => ({ ...a, [k]: e.target.value }))
+  const setA = k => e => {
+    // PIN and phone stay as-is; all other address fields auto-uppercase
+    const val = (k === 'pin' || k === 'phone') ? e.target.value : e.target.value.toUpperCase()
+    setAddr(a => ({ ...a, [k]: val }))
+  }
 
   // ── Step 1: Address ─────────────────────────────────────
   const submitAddress = () => {
-    const { name, phone, line1, city, state, pincode } = addr
-    if (!name||!phone||!line1||!city||!state||!pincode) {
+    const { name, phone, line1, city, state, pin } = addr
+    if (!name||!phone||!line1||!city||!state||!pin) {
       showToast('Missing details', 'Please fill all required fields'); return
     }
-    if (!/^\d{10}$/.test(phone))  { showToast('Invalid phone',   'Enter a valid 10-digit number'); return }
-    if (!/^\d{6}$/.test(pincode)) { showToast('Invalid pincode', 'Enter a valid 6-digit pincode'); return }
+    if (!/^\d{10}$/.test(phone)) { showToast('Invalid phone', 'Enter a valid 10-digit number'); return }
+    if (!/^\d{6}$/.test(pin))    { showToast('Invalid PIN',   'Enter a valid 6-digit PIN code'); return }
     setStep(2)
   }
 
@@ -104,27 +107,28 @@ export default function CheckoutModal({ onClose }) {
   const placeOrder = async () => {
     setPaying(true)
 
+    // Step 1: Save order to backend
     let orderId = null
     try {
-      // FIX 4: Use API base URL + always send paymentMethod as 'razorpay'
-      const res  = await fetch(`${API}/api/orders`, {
+      const res  = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${token()}` },
         body: JSON.stringify({
           items: cart.map(i => ({ productId:i.id, name:i.name, size:i.size, quantity:i.qty })),
           shipping: addr,
-          paymentMethod: 'razorpay', // FIX 5: backend enum only accepts 'razorpay', not 'upi'/'card' etc.
+          paymentMethod: method,
         }),
       })
       const data = await res.json()
       orderId = data.order?.orderId
-      if (!orderId) throw new Error(data.error || 'No orderId returned')
+      if (!orderId) throw new Error('No orderId returned')
     } catch (err) {
       setPaying(false)
-      showToast('Error', err.message || 'Could not create order. Please try again.')
+      showToast('Error', 'Could not create order. Please try again.')
       return
     }
 
+    // Step 2: Load Razorpay SDK
     const loaded = await loadRazorpay()
     if (!loaded) {
       setPaying(false)
@@ -132,9 +136,10 @@ export default function CheckoutModal({ onClose }) {
       return
     }
 
+    // Step 3: Create Razorpay order on backend to get a signed order_id
     let rzpOrderId, rzpAmount, rzpKeyId
     try {
-      const rzpRes = await fetch(`${API}/api/payments/create-order`, {
+      const rzpRes = await fetch('/api/payments/create-order', {
         method: 'POST',
         headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${token()}` },
         body: JSON.stringify({ orderId }),
@@ -158,23 +163,30 @@ export default function CheckoutModal({ onClose }) {
       name:        'NOXETA',
       description: 'Premium Streetwear',
       image:       '/images/favicon.svg',
+
+      // Pre-fill user details so customer doesn't retype
       prefill: {
         name:    user?.name  || addr.name,
         email:   user?.email || '',
         contact: addr.phone,
       },
+
+      // Open Razorpay directly on the correct tab based on what user selected
       config: {
         display: {
+          // Hide methods user didn't select — focus their experience
           hide: [],
           preferences: {
             show_default_blocks: true,
           },
         },
       },
+
       theme:  { color: '#c9a84c' },
       handler: async (response) => {
+        // Verify payment signature on backend before confirming
         try {
-          const verifyRes = await fetch(`${API}/api/payments/verify`, {
+          const verifyRes = await fetch('/api/payments/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` },
             body: JSON.stringify({
@@ -204,6 +216,7 @@ export default function CheckoutModal({ onClose }) {
       },
     }
 
+    // If a specific method is selected, tell Razorpay to open on that tab
     if (RAZORPAY_METHOD_MAP[method]) {
       rzpConfig.config.display.default_block = method === 'upi' ? 'upi' : method
     }
@@ -219,6 +232,7 @@ export default function CheckoutModal({ onClose }) {
 
   const genId = () => 'NXL' + Date.now().toString().slice(-8)
 
+  // ── Success screen ───────────────────────────────────────
   if (success) return (
     <div className="success-screen">
       <div className="success-inner">
@@ -242,6 +256,7 @@ export default function CheckoutModal({ onClose }) {
         </div>
         <div className="modal-body">
 
+          {/* Steps */}
           <div className="checkout-steps">
             {[['01','Address'],['02','Payment'],['03','Confirm']].map(([num, label], i) => (
               <div key={i} className={`co-step${step===i+1?' active':step>i+1?' done':''}`}>
@@ -261,22 +276,28 @@ export default function CheckoutModal({ onClose }) {
               ].map(([k, label, ph]) => (
                 <div className="form-group" key={k}>
                   <label className="form-label">{label}</label>
-                  <input className="form-input" placeholder={ph} value={addr[k]} onChange={setA(k)} />
+                  <input
+                    className="form-input"
+                    placeholder={ph}
+                    value={addr[k]}
+                    onChange={setA(k)}
+                    style={k !== 'phone' ? { textTransform: 'uppercase' } : {}}
+                  />
                 </div>
               ))}
               <div className="two-col">
                 <div className="form-group">
                   <label className="form-label">City *</label>
-                  <input className="form-input" placeholder="Mumbai" value={addr.city} onChange={setA('city')} />
+                  <input className="form-input" placeholder="Mumbai" value={addr.city} onChange={setA('city')} style={{ textTransform: 'uppercase' }} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">State *</label>
-                  <input className="form-input" placeholder="Maharashtra" value={addr.state} onChange={setA('state')} />
+                  <input className="form-input" placeholder="Maharashtra" value={addr.state} onChange={setA('state')} style={{ textTransform: 'uppercase' }} />
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">Pincode *</label>
-                <input className="form-input" placeholder="6-digit pincode" maxLength={6} value={addr.pincode} onChange={setA('pincode')} />
+                <label className="form-label">PIN Code *</label>
+                <input className="form-input" placeholder="6-digit PIN" maxLength={6} value={addr.pin} onChange={setA('pin')} />
               </div>
               <button className="btn-primary btn-block" onClick={submitAddress}>
                 Continue to Payment →
@@ -287,6 +308,7 @@ export default function CheckoutModal({ onClose }) {
           {/* ── Step 2: Payment ── */}
           {step === 2 && (
             <>
+              {/* Order summary */}
               <div className="order-summary">
                 <div style={{ fontFamily:'var(--font-m)', fontSize:'9px', letterSpacing:'2px', color:'var(--text-dim)', marginBottom:'12px' }}>
                   ORDER SUMMARY
@@ -314,6 +336,7 @@ export default function CheckoutModal({ onClose }) {
                 </div>
               </div>
 
+              {/* Payment method selector */}
               <div style={{ fontFamily:'var(--font-m)', fontSize:'9px', letterSpacing:'2px', color:'var(--text-dim)', marginBottom:'10px' }}>
                 SELECT PAYMENT METHOD
               </div>
@@ -343,6 +366,7 @@ export default function CheckoutModal({ onClose }) {
                 ))}
               </div>
 
+              {/* Helpful note for UPI */}
               {method === 'upi' && (
                 <div style={{ fontFamily:'var(--font-m)', fontSize:'8px', letterSpacing:'0.5px', color:'var(--text-dim)',
                   border:'1px solid var(--border)', padding:'10px 12px', marginBottom:'14px', lineHeight:'1.6' }}>
