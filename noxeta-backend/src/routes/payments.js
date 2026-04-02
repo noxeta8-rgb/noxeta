@@ -3,6 +3,8 @@ const Razorpay = require('razorpay');
 const crypto   = require('crypto');
 const { protect } = require('../middleware/auth');
 const Order    = require('../models/Order');
+const User     = require('../models/User');
+const { sendEmail } = require('../utils/email');
 
 const router = express.Router();
 
@@ -98,6 +100,29 @@ router.post('/verify', protect, async (req, res, next) => {
     order.payment.paidAt            = new Date();
     order.status                    = 'confirmed';
     await order.save();
+
+    // Send confirmation email only after successful payment
+    try {
+      const user = await User.findById(order.user);
+      if (user) {
+        await sendEmail({
+          to: user.email,
+          subject: `Noxeta — Order Confirmed #${order.orderId}`,
+          template: 'orderConfirm',
+          data: {
+            name:    user.name,
+            orderId: order.orderId,
+            items:   order.items,
+            total:   order.total,
+            shipping: order.shipping,
+          },
+        });
+        await Order.findByIdAndUpdate(order._id, { emailSentAt: new Date() });
+      }
+    } catch (emailErr) {
+      console.error('Confirmation email failed:', emailErr);
+      // Don't fail the payment response just because email failed
+    }
 
     res.json({ success: true, message: 'Payment verified', orderId: order.orderId });
   } catch (err) {
