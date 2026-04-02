@@ -157,7 +157,7 @@ function StorySection() {
         </div>
       </div>
       <div className="story-content">
-        <ScrollReveal><p className="section-eye">Est. 2026 — Gurugram</p></ScrollReveal>
+        <ScrollReveal><p className="section-eye">Est. 2026 — Delhi</p></ScrollReveal>
         <ScrollReveal delay={1}><h2 className="section-title">Born From <em>Darkness</em></h2></ScrollReveal>
         <ScrollReveal delay={2}>
           <blockquote className="story-quote">"Fashion is the armor to survive the reality of everyday life."</blockquote>
