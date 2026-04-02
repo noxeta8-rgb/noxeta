@@ -2,7 +2,8 @@ const express = require('express');
 const Order   = require('../models/Order');
 const Product = require('../models/Product');
 const { protect, adminOnly } = require('../middleware/auth');
-const { sendEmail } = require('../utils/email');
+// sendEmail is intentionally NOT imported here.
+// Confirmation email is sent only after payment is verified (see payments.js).
 
 const router = express.Router();
 
@@ -50,7 +51,7 @@ router.post('/', protect, async (req, res, next) => {
       items:    orderItems,
       shipping,
       payment: {
-        method: 'razorpay',
+        method: paymentMethod || 'razorpay',
         status: 'pending',
       },
       subtotal,
@@ -66,22 +67,6 @@ router.post('/', protect, async (req, res, next) => {
         { $inc: { 'variants.$.stock': -item.quantity, soldCount: item.quantity } }
       ).catch(console.error);
     }
-
-    // Send confirmation email
-    sendEmail({
-      to: req.user.email,
-      subject: `Noxeta — Order Confirmed #${order.orderId}`,
-      template: 'orderConfirm',
-      data: {
-        name:    req.user.name,
-        orderId: order.orderId,
-        items:   orderItems,
-        total,
-        shipping,
-      },
-    }).then(() => {
-      Order.findByIdAndUpdate(order._id, { emailSentAt: new Date() }).exec();
-    }).catch(console.error);
 
     res.status(201).json({ success: true, order });
   } catch (err) {
