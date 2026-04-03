@@ -466,9 +466,11 @@ export default function Admin() {
             data._mongoId = resData.product._id
             data.totalStock = resData.product.totalStock
           }
-        } else {
-          const errData = await res.json()
-          showToast('Database Error', errData.error || 'Failed to save to cloud')
+        }else {
+  const errData = await res.json()
+  showToast('Database Error', errData.error || 'Failed to save to cloud')
+  setSaving(false)
+  return 
         }
       } catch (err) {
         showToast('Connection Error', 'Could not save to database')
