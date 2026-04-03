@@ -480,7 +480,10 @@ export default function Admin() {
         const url = targetId ? `/api/products/${targetId}` : '/api/products'
         const method = targetId ? 'PUT' : 'POST'
         // Strip frontend-only fields before sending to backend
-        const { _id, _mongoId, id, sizeStocks, customSizes, ...cleanData } = data
+        const { _id, _mongoId, id, sizeStocks, customSizes, featured, ...cleanData } = data
+cleanData.badge = cleanData.badge || null
+if (!cleanData.fit) delete cleanData.fit
+if (!cleanData.material) delete cleanData.material
         cleanData.isActive = true  // ensure it survives the destructure
         const res = await fetch(url, {
           method,
