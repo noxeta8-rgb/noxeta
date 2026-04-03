@@ -92,24 +92,31 @@ export default function Admin() {
   const [toast,     setToast]     = useState(null)
   const [form,      setForm]      = useState(emptyForm)
   const [saving,      setSaving]      = useState(false)
-  const [cloudUsage,  setCloudUsage]  = useState(null)   // { used_bytes, limit }
+  const [cloudUsage,  setCloudUsage]  = useState(null)
   const fileRef    = useRef()
   const toastTimer = useRef()
 
   const setF = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
 
+  // ── Live discount % computed from form inputs ──
+  const discountPct = (() => {
+    const orig = Number(form.originalPrice)
+    const sale = Number(form.price)
+    if (orig > 0 && sale > 0 && orig > sale) {
+      return Math.round(((orig - sale) / orig) * 100)
+    }
+    return null
+  })()
+
   const save = (prods) => {
     setProducts(prods)
-    // Sync live PRODUCTS array
     prods.forEach(sp => {
       const live = PRODUCTS.find(p => p.id === sp.id)
       if (live) live.images = sp.images || []
     })
     console.log('💾 Saving', prods.length, 'products to localStorage')
-    // Try saving — if quota exceeded strip base64 and only keep paths
     const ok = safeSetLocal(PRODUCTS_STORAGE_KEY, JSON.stringify(prods))
     if (!ok) {
-      // Quota exceeded — save lightweight version (no base64, only real URLs)
       const lite = prods.map(p => ({
         ...p,
         images: (p.images || []).filter(url => !String(url).startsWith('data:')),
@@ -118,8 +125,6 @@ export default function Admin() {
       safeSetLocal(PRODUCTS_STORAGE_KEY, JSON.stringify(lite))
       showToast('Storage almost full', 'Connect backend to save more images permanently')
     }
-    // Clear localStorage cache after a short delay so user-facing pages
-    // always re-fetch fresh data from backend instead of serving stale cache
     setTimeout(() => {
       try { localStorage.removeItem(PRODUCTS_STORAGE_KEY) } catch {}
       broadcastProductsUpdated()
@@ -132,12 +137,9 @@ export default function Admin() {
     toastTimer.current = setTimeout(() => setToast(null), 4000)
   }
 
-  // ── All useEffects must be before any early return ──────
-  // ── Fetch Cloudinary usage from backend ──────────────────
   useEffect(() => {
     const fetchUsage = async () => {
       const token = localStorage.getItem('nox_token') || ''
-      // Skip if clearly a demo/offline token
       if (!token || token.startsWith('demo-')) return
       try {
         const res = await fetch('/api/upload/usage', {
@@ -147,23 +149,19 @@ export default function Admin() {
           const data = await res.json()
           setCloudUsage(data)
         }
-        // Silently ignore 401/403 — just means no real token yet
       } catch { /* backend not running — ignore */ }
     }
     if (user) fetchUsage()
   }, [user])
 
-  // Always fetch fresh from backend on load so admin sees latest data
   useEffect(() => {
     fetchAdminProducts()
   }, [])
 
-  // Fetch orders only when switching to orders section
   useEffect(() => {
     if (section === 'orders') fetchOrders()
   }, [section])
 
-  // Redirect if not logged in or not admin
   if (!user) {
     return (
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', background:'var(--bg)' }}>
@@ -204,7 +202,6 @@ export default function Admin() {
     (!filterCat || p.category === filterCat)
   )
 
-
   const fetchOrders = async () => {
     const token = localStorage.getItem('nox_token') || ''
     if (!token || token.startsWith('demo-')) return
@@ -228,63 +225,43 @@ export default function Admin() {
           const rawImages = Array.isArray(p.images) && p.images.length > 0 ? p.images : []
           const validImageStrings = rawImages.map(img => typeof img === 'string' ? img : img?.url).filter(Boolean)
           const calcStock = p.variants ? p.variants.reduce((s, v) => s + (Number(v.stock) || 0), 0) : 0
-
           return {
             ...p,
-            id: p._id,          // use MongoDB _id as the id
+            id: p._id,
             _mongoId: p._id,
             images: validImageStrings,
             heroSlide: p.heroSlide || validImageStrings.length > 0,
             stock: calcStock,
           }
         })
-
         save(formatted)
         console.log('✅ Loaded', formatted.length, 'products from backend')
       }
     } catch (e) { console.error('Error fetching admin products:', e) }
   }
 
-
-
   const updateOrderStatus = async (orderId, status) => {
     const token = localStorage.getItem('nox_token') || ''
     if (!token || token.startsWith('demo-')) {
        return showToast('Error', 'Real backend required')
     }
-    
-    // Optimistic update locally
-    setOrders(prev => prev.map(o => o.orderId === orderId ? { ...o, status } : o));
-
+    setOrders(prev => prev.map(o => o.orderId === orderId ? { ...o, status } : o))
     try {
       const res = await fetch(`/api/orders/${orderId}/status`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer ' + token
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
         body: JSON.stringify({ status })
       })
-      if (!res.ok) {
-         showToast('Error', 'Could not update status')
-         fetchOrders() // revert
-      } else {
-         showToast('Success', 'Order status updated')
-      }
-    } catch {
-       showToast('Error', 'Connection failed')
-    }
+      if (!res.ok) { showToast('Error', 'Could not update status'); fetchOrders() }
+      else showToast('Success', 'Order status updated')
+    } catch { showToast('Error', 'Connection failed') }
   }
 
   const resolveBackendProductId = async (product) => {
-    // Already have a real MongoDB id
     if (product?._mongoId && !String(product._mongoId).startsWith('local-')) {
       return product._mongoId
     }
-
     const token = localStorage.getItem('nox_token') || ''
-
-    // Search MongoDB by slug or name
     try {
       const res = await fetch('/api/products?limit=100')
       if (res.ok) {
@@ -295,14 +272,11 @@ export default function Admin() {
         if (match?._id) return match._id
       }
     } catch {}
-
-    // Product not in MongoDB yet (local-only) — create it now so images have a real ID to attach to
     if (token && !token.startsWith('demo-') && product?.name) {
       try {
         const slug = (product.slug || product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
         const payload = {
-          name: product.name,
-          slug,
+          name: product.name, slug,
           category: product.category || 'uncategorized',
           price: Number(product.price) || 0,
           description: product.description || product.name,
@@ -320,7 +294,6 @@ export default function Admin() {
           const created = await createRes.json()
           const newId = created.product?._id
           if (newId) {
-            // Patch local state so future calls skip this step
             setProducts(prev => prev.map(p =>
               p.id === product.id ? { ...p, _mongoId: newId, id: newId } : p
             ))
@@ -329,7 +302,6 @@ export default function Admin() {
         }
       } catch {}
     }
-
     return null
   }
 
@@ -339,9 +311,7 @@ export default function Admin() {
       ...toImageRecord(image, p?.name, index),
       isNew: false,
     })).filter(image => image.url)
-
     setCurImgs(existingImages)
-    // Use MongoDB _id if available, otherwise use frontend id
     const mongoId = p?._mongoId || id
     setImgModal({ frontendId: id, mongoId, name: p?.name })
   }
@@ -349,7 +319,6 @@ export default function Admin() {
   const handleFiles = (files) => {
     Array.from(files).filter(f => f.type.startsWith('image/')).forEach(async file => {
       if (file.size > 15 * 1024 * 1024) { showToast('Too large', file.name + ' exceeds 15MB'); return }
-      // Compress before adding to preview
       const compressed = await compressImage(file)
       setCurImgs(prev => [...prev, { url: compressed, isNew: true, file }])
     })
@@ -360,11 +329,9 @@ export default function Admin() {
     const p = products.find(x => x.id === (imgModal?.frontendId ?? imgModal))
     if (!p) return
     setSaving(true)
-
     const frontendId = imgModal?.frontendId ?? imgModal
     const token = localStorage.getItem('nox_token') || ''
     let productTargetId = await resolveBackendProductId(p) || imgModal?.mongoId || frontendId
-
     const newFiles = curImgs.filter(img => img.isNew && img.file)
     const oldImages = curImgs
       .filter(img => !img.isNew)
@@ -372,40 +339,29 @@ export default function Admin() {
       .filter(img => img.url)
     let uploadedImages = []
 
-    // Upload all new files in one multipart request
     if (newFiles.length > 0) {
-      // Check if we have a real token before attempting upload
       if (!token || token.startsWith('demo-')) {
         showToast('Not logged in', 'Please login with your admin account first, then try again')
         setSaving(false)
         return
       }
-
       try {
         const fd = new FormData()
         newFiles.forEach(img => fd.append('images', img.file))
-
         console.log('Uploading', newFiles.length, 'files to /api/upload/product/' + productTargetId)
-
         const res = await fetch('/api/upload/product/' + productTargetId, {
           method: 'POST',
           headers: { Authorization: 'Bearer ' + token },
           body: fd,
         })
-
         const data = await res.json()
         console.log('Upload response:', res.status, data)
-
         if (res.ok) {
           uploadedImages = (data.images || []).map((img, index) =>
             toImageRecord(img, p.name, oldImages.length + index)
           )
-
-          // Refresh usage stats
           try {
-            const uRes = await fetch('/api/upload/usage', {
-              headers: { Authorization: 'Bearer ' + token }
-            })
+            const uRes = await fetch('/api/upload/usage', { headers: { Authorization: 'Bearer ' + token } })
             if (uRes.ok) setCloudUsage(await uRes.json())
           } catch {}
         } else {
@@ -431,10 +387,7 @@ export default function Admin() {
       try {
         const replaceRes = await fetch('/api/products/' + productTargetId + '/images/replace', {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: 'Bearer ' + token,
-          },
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
           body: JSON.stringify({ images: finalImageRecords }),
         })
         if (!replaceRes.ok) {
@@ -454,13 +407,7 @@ export default function Admin() {
 
     const updated = products.map(x =>
       x.id === frontendId
-        ? {
-            ...x,
-            _mongoId: typeof productTargetId === 'string' ? productTargetId : x._mongoId,
-            _imageRecords: finalImageRecords,
-            images: finalUrls,
-            heroSlide: finalUrls.length > 0,
-          }
+        ? { ...x, _mongoId: typeof productTargetId === 'string' ? productTargetId : x._mongoId, _imageRecords: finalImageRecords, images: finalUrls, heroSlide: finalUrls.length > 0 }
         : x
     )
     save(updated)
@@ -474,7 +421,6 @@ export default function Admin() {
     if (id === 'new') { setForm(emptyForm); setProdModal('new'); return }
     const p = products.find(x => x.id === id)
     if (!p) return
-    // Build sizeStocks from variants
     const sizeStocks = { S: '', M: '', L: '', XL: '', XXL: '' }
     if (Array.isArray(p.variants)) {
       p.variants.forEach(v => { if (v.size in sizeStocks) sizeStocks[v.size] = String(v.stock || '') })
@@ -486,8 +432,6 @@ export default function Admin() {
   const saveForm = async () => {
     if (!form.name || !form.category || !form.price || !form.description) { showToast('Missing fields', 'Name, category, price and description are required'); return }
     setSaving(true)
-
-    // Build variants from per-size stock inputs + optional custom sizes
     const extraSizes = form.customSizes
       ? form.customSizes.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
       : []
@@ -497,9 +441,8 @@ export default function Admin() {
       stock: Number(form.sizeStocks?.[size] || 0),
     }))
     const totalStockVal = variants.reduce((s, v) => s + v.stock, 0)
-
     const data = { ...form, price:Number(form.price), originalPrice:Number(form.originalPrice)||null, gsm:Number(form.gsm)||null, featured:form.featured==='true', isFeatured:form.featured==='true', sizes:allSizes, variants, colors:['#080808'], tags:[], heroSlide:form.featured==='true', slug:form.name.toLowerCase().replace(/[^a-z0-9]+/g,'-'), totalStock: totalStockVal }
-    
+
     const token = localStorage.getItem('nox_token') || ''
     if (token && !token.startsWith('demo-')) {
       try {
@@ -509,20 +452,14 @@ export default function Admin() {
           const existing = products.find(p => p.id === prodModal)
           targetId = await resolveBackendProductId(existing)
         }
-        
         const url = targetId ? `/api/products/${targetId}` : '/api/products'
         const method = targetId ? 'PUT' : 'POST'
-        
-        const { _id, _mongoId, id, ...cleanData } = data;
+        const { _id, _mongoId, id, ...cleanData } = data
         const res = await fetch(url, {
           method,
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: 'Bearer ' + token,
-          },
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
           body: JSON.stringify(cleanData),
         })
-        
         if (res.ok) {
           const resData = await res.json()
           if (resData.product && resData.product._id) {
@@ -575,14 +512,11 @@ export default function Admin() {
     showToast('Deleted', '')
   }
 
-
-
   const inp = { width:'100%', padding:'11px 14px', background:'var(--surface2)', border:'1px solid var(--border)', color:'var(--text)', fontFamily:'var(--font-m)', fontSize:'12px', outline:'none' }
   const lbl = { display:'block', fontSize:'9px', letterSpacing:'2px', textTransform:'uppercase', color:'var(--text-dim)', marginBottom:'7px', fontFamily:'var(--font-m)' }
   const fg  = { marginBottom:'16px' }
   const th  = { background:'var(--surface2)', padding:'12px 16px', textAlign:'left', fontSize:'9px', letterSpacing:'2px', textTransform:'uppercase', color:'var(--text-dim)', borderBottom:'1px solid var(--border)' }
   const td  = { padding:'14px 16px', borderBottom:'1px solid var(--border)', verticalAlign:'middle' }
-
 
   return (
     <div style={{ display:'grid', gridTemplateColumns:'240px 1fr', minHeight:'100vh', paddingTop:'72px', background:'var(--bg)' }}>
@@ -671,6 +605,7 @@ export default function Admin() {
                   {CATEGORIES.map(c => <option key={c}>{c}</option>)}
                 </select>
               </div>
+
               <div style={{ background:'var(--surface)', border:'1px solid var(--border)', overflow:'hidden' }}>
                 <table style={{ width:'100%', borderCollapse:'collapse' }}>
                   <thead>
@@ -679,27 +614,53 @@ export default function Admin() {
                   <tbody>
                     {tableProducts.length === 0
                       ? <tr><td colSpan={8} style={{ ...td, textAlign:'center', padding:'40px', color:'var(--text-dim)' }}>No products found</td></tr>
-                      : tableProducts.map(p => (
-                        <tr key={p.id}>
-                          <td style={td}><img src={p.images?.[0]} alt="" style={{ width:'48px', height:'60px', objectFit:'cover', objectPosition:'top', background:'var(--surface2)' }} onError={e => e.target.removeAttribute('src')} /></td>
-                          <td style={td}><div style={{ fontSize:'13px' }}>{p.name}</div><div style={{ fontSize:'10px', color:'var(--text-dim)', marginTop:'2px' }}>{p.slug}</div></td>
-                          <td style={td}><span style={{ background:'var(--surface2)', padding:'3px 8px', fontSize:'9px' }}>{p.category}</span></td>
-                          <td style={{ ...td, fontFamily:'var(--font-m)', fontSize:'12px', color:'var(--accent)' }}>
-                            {p.originalPrice && <div style={{ color:'var(--text-dim)', fontSize:'10px', textDecoration:'line-through' }}>₹{p.originalPrice}</div>}
-                            ₹{p.price}
-                          </td>
-                          <td style={{ ...td, fontFamily:'var(--font-m)', fontSize:'11px', color: (p.totalStock||p.stock)>0?'var(--green)':'var(--red)' }}>{(p.totalStock||p.stock||0)}</td>
-                          <td style={{ ...td, color:(p.images?.length||0)>0?'var(--green)':'var(--red)' }}>{p.images?.length||0}</td>
-                          <td style={td}><span style={{ width:'8px', height:'8px', borderRadius:'50%', background:p.featured?'var(--green)':'var(--red)', display:'inline-block', marginRight:'6px' }}/>{p.featured?'Yes':'No'}</td>
-                          <td style={td}>
-                            <div style={{ display:'flex', gap:'6px' }}>
-                              <button onClick={() => openImgModal(p.id)} style={{ padding:'7px 14px', background:'var(--accent)', border:'1px solid var(--accent)', color:'var(--bg)', fontFamily:'var(--font-m)', fontSize:'10px', cursor:'pointer' }}>⊕ Images</button>
-                              <button onClick={() => openEdit(p.id)} style={{ padding:'7px 14px', background:'transparent', border:'1px solid var(--border)', color:'var(--text-dim)', fontFamily:'var(--font-m)', fontSize:'10px', cursor:'pointer' }}>Edit</button>
-                              <button onClick={() => deleteProduct(p.id)} style={{ padding:'7px 14px', background:'transparent', border:'1px solid var(--border)', color:'var(--text-dim)', fontFamily:'var(--font-m)', fontSize:'10px', cursor:'pointer' }}>✕</button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
+                      : tableProducts.map(p => {
+                          // Compute discount % for each row
+                          const rowPct = p.originalPrice && p.price && Number(p.originalPrice) > Number(p.price)
+                            ? Math.round(((Number(p.originalPrice) - Number(p.price)) / Number(p.originalPrice)) * 100)
+                            : null
+                          return (
+                            <tr key={p.id}>
+                              <td style={td}>
+                                <img src={p.images?.[0]} alt="" style={{ width:'48px', height:'60px', objectFit:'cover', objectPosition:'top', background:'var(--surface2)' }} onError={e => e.target.removeAttribute('src')} />
+                              </td>
+                              <td style={td}>
+                                <div style={{ fontSize:'13px' }}>{p.name}</div>
+                                <div style={{ fontSize:'10px', color:'var(--text-dim)', marginTop:'2px' }}>{p.slug}</div>
+                              </td>
+                              <td style={td}>
+                                <span style={{ background:'var(--surface2)', padding:'3px 8px', fontSize:'9px' }}>{p.category}</span>
+                              </td>
+                              {/* ── Price cell with MRP + sale + discount badge ── */}
+                              <td style={{ ...td, fontFamily:'var(--font-m)', fontSize:'12px' }}>
+                                {p.originalPrice && (
+                                  <div style={{ color:'var(--text-dim)', fontSize:'10px', textDecoration:'line-through' }}>₹{p.originalPrice}</div>
+                                )}
+                                <div style={{ color:'var(--accent)' }}>₹{p.price}</div>
+                                {rowPct && (
+                                  <div style={{ display:'inline-block', marginTop:'3px', background:'var(--green)', color:'#000', fontSize:'9px', letterSpacing:'1px', padding:'2px 6px', borderRadius:'2px' }}>
+                                    -{rowPct}% OFF
+                                  </div>
+                                )}
+                              </td>
+                              <td style={{ ...td, fontFamily:'var(--font-m)', fontSize:'11px', color: (p.totalStock||p.stock)>0?'var(--green)':'var(--red)' }}>
+                                {(p.totalStock||p.stock||0)}
+                              </td>
+                              <td style={{ ...td, color:(p.images?.length||0)>0?'var(--green)':'var(--red)' }}>{p.images?.length||0}</td>
+                              <td style={td}>
+                                <span style={{ width:'8px', height:'8px', borderRadius:'50%', background:p.featured?'var(--green)':'var(--red)', display:'inline-block', marginRight:'6px' }}/>
+                                {p.featured?'Yes':'No'}
+                              </td>
+                              <td style={td}>
+                                <div style={{ display:'flex', gap:'6px' }}>
+                                  <button onClick={() => openImgModal(p.id)} style={{ padding:'7px 14px', background:'var(--accent)', border:'1px solid var(--accent)', color:'var(--bg)', fontFamily:'var(--font-m)', fontSize:'10px', cursor:'pointer' }}>⊕ Images</button>
+                                  <button onClick={() => openEdit(p.id)} style={{ padding:'7px 14px', background:'transparent', border:'1px solid var(--border)', color:'var(--text-dim)', fontFamily:'var(--font-m)', fontSize:'10px', cursor:'pointer' }}>Edit</button>
+                                  <button onClick={() => deleteProduct(p.id)} style={{ padding:'7px 14px', background:'transparent', border:'1px solid var(--border)', color:'var(--text-dim)', fontFamily:'var(--font-m)', fontSize:'10px', cursor:'pointer' }}>✕</button>
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })
                     }
                   </tbody>
                 </table>
@@ -762,8 +723,8 @@ export default function Admin() {
                           </td>
                           <td style={{ ...td, fontFamily:'var(--font-m)', fontSize:'12px' }}>₹{o.total}</td>
                           <td style={td}>
-                            <select 
-                              value={o.status} 
+                            <select
+                              value={o.status}
                               onChange={(e) => updateOrderStatus(o.orderId, e.target.value)}
                               style={{ ...inp, padding:'6px 10px', fontSize:'11px', width:'auto' }}>
                               {['placed','confirmed','shipped','delivered','cancelled'].map(st => (
@@ -848,8 +809,7 @@ export default function Admin() {
               <div style={{ display:'flex', gap:'12px', justifyContent:'flex-end', alignItems:'center' }}>
                 {saving && <span style={{ fontFamily:'var(--font-m)', fontSize:'10px', color:'var(--text-dim)', letterSpacing:'1px' }}>Saving...</span>}
                 <button className="btn-ghost" onClick={() => setImgModal(null)} disabled={saving}>Cancel</button>
-                <button className="btn-primary" onClick={saveImages} disabled={saving}
-                  style={{ opacity: saving ? 0.6 : 1 }}>
+                <button className="btn-primary" onClick={saveImages} disabled={saving} style={{ opacity: saving ? 0.6 : 1 }}>
                   {saving ? 'Saving...' : 'Save Images →'}
                 </button>
               </div>
@@ -869,13 +829,35 @@ export default function Admin() {
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px' }}>
                 <div style={fg}><label style={lbl}>Product Name *</label><input style={inp} placeholder="e.g. Flame Co-ord Set" value={form.name} onChange={setF('name')} /></div>
                 <div style={fg}><label style={lbl}>Category *</label><select style={inp} value={form.category} onChange={setF('category')}><option value="">Select...</option>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
-                <div style={fg}><label style={lbl}>Price (₹) *</label><input style={inp} type="number" placeholder="1299" value={form.price} onChange={setF('price')} /></div>
-                <div style={fg}><label style={lbl}>Original Price (₹)</label><input style={inp} type="number" placeholder="Leave blank if no discount" value={form.originalPrice} onChange={setF('originalPrice')} /></div>
+
+                {/* ── MRP field ── */}
+                <div style={fg}>
+                  <label style={lbl}>Original Price (₹) — MRP</label>
+                  <input style={inp} type="number" placeholder="e.g. 1999 (leave blank if no discount)" value={form.originalPrice} onChange={setF('originalPrice')} />
+                </div>
+
+                {/* ── Sale price + live discount badge ── */}
+                <div style={fg}>
+                  <label style={lbl}>Sale Price (₹) *</label>
+                  <input style={inp} type="number" placeholder="e.g. 1299" value={form.price} onChange={setF('price')} />
+                  {discountPct && (
+                    <div style={{ marginTop:'8px', display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap' }}>
+                      <span style={{ background:'var(--green)', color:'#000', fontFamily:'var(--font-m)', fontSize:'10px', letterSpacing:'1px', padding:'3px 10px', borderRadius:'2px', fontWeight:'bold' }}>
+                        -{discountPct}% OFF
+                      </span>
+                      <span style={{ fontFamily:'var(--font-m)', fontSize:'10px', color:'var(--text-dim)' }}>
+                        Customer saves ₹{Number(form.originalPrice) - Number(form.price)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
                 <div style={fg}><label style={lbl}>Badge</label><select style={inp} value={form.badge} onChange={setF('badge')}><option value="">None</option>{['New','Hot','Limited','Collab','Bestseller','Sale'].map(b=><option key={b}>{b}</option>)}</select></div>
                 <div style={fg}><label style={lbl}>Material</label><input style={inp} placeholder="100% Cotton" value={form.material} onChange={setF('material')} /></div>
                 <div style={fg}><label style={lbl}>GSM</label><input style={inp} type="number" placeholder="220" value={form.gsm} onChange={setF('gsm')} /></div>
                 <div style={fg}><label style={lbl}>Fit</label><select style={inp} value={form.fit} onChange={setF('fit')}><option value="">Select...</option>{['Oversized','Regular','Slim','Wide Leg'].map(f=><option key={f}>{f}</option>)}</select></div>
               </div>
+
               <div style={fg}><label style={lbl}>Description *</label><textarea style={{ ...inp, resize:'vertical', minHeight:'90px' }} value={form.description} onChange={setF('description')} /></div>
               <div style={fg}><label style={lbl}>Featured on Homepage</label><select style={inp} value={form.featured} onChange={setF('featured')}><option value="false">No</option><option value="true">Yes</option></select></div>
 
