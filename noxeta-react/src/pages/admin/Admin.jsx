@@ -108,7 +108,10 @@ export default function Admin() {
     return null
   })()
 
-  const save = (prods) => {
+  // ── FIX 1: save() no longer deletes localStorage before broadcasting.
+  //    silent=true is used for initial load (fetchAdminProducts) so it
+  //    doesn't trigger a shop re-fetch unnecessarily.
+  const save = (prods, { silent = false } = {}) => {
     setProducts(prods)
     prods.forEach(sp => {
       const live = PRODUCTS.find(p => p.id === sp.id)
@@ -125,10 +128,10 @@ export default function Admin() {
       safeSetLocal(PRODUCTS_STORAGE_KEY, JSON.stringify(lite))
       showToast('Storage almost full', 'Connect backend to save more images permanently')
     }
-    setTimeout(() => {
-      try { localStorage.removeItem(PRODUCTS_STORAGE_KEY) } catch {}
+    // Only broadcast to shop when something actually changed (not on initial load)
+    if (!silent) {
       broadcastProductsUpdated()
-    }, 600)
+    }
   }
 
   const showToast = (title, msg = '') => {
@@ -214,6 +217,8 @@ export default function Admin() {
     } catch (e) { console.error('Error fetching orders:', e) }
   }
 
+  // ── FIX 2: fetchAdminProducts uses silent=true so it doesn't trigger
+  //    a shop re-fetch on every admin page load.
   const fetchAdminProducts = async () => {
     const token = localStorage.getItem('nox_token') || ''
     if (!token || token.startsWith('demo-')) return
@@ -234,7 +239,7 @@ export default function Admin() {
             stock: calcStock,
           }
         })
-        save(formatted)
+        save(formatted, { silent: true })
         console.log('✅ Loaded', formatted.length, 'products from backend')
       }
     } catch (e) { console.error('Error fetching admin products:', e) }
@@ -429,6 +434,11 @@ export default function Admin() {
     setProdModal(id)
   }
 
+  // ── FIX 3: saveForm now:
+  //    a) Sends isActive:true explicitly so product is always visible in shop
+  //    b) Captures the backend _id immediately into data.id so localStorage
+  //       and backend stay in sync
+  //    c) Returns early (stops) if backend save fails — no ghost local products
   const saveForm = async () => {
     if (!form.name || !form.category || !form.price || !form.description) { showToast('Missing fields', 'Name, category, price and description are required'); return }
     setSaving(true)
@@ -441,7 +451,22 @@ export default function Admin() {
       stock: Number(form.sizeStocks?.[size] || 0),
     }))
     const totalStockVal = variants.reduce((s, v) => s + v.stock, 0)
-    const data = { ...form, price:Number(form.price), originalPrice:Number(form.originalPrice)||null, gsm:Number(form.gsm)||null, featured:form.featured==='true', isFeatured:form.featured==='true', sizes:allSizes, variants, colors:['#080808'], tags:[], heroSlide:form.featured==='true', slug:form.name.toLowerCase().replace(/[^a-z0-9]+/g,'-'), totalStock: totalStockVal }
+    const data = {
+      ...form,
+      price: Number(form.price),
+      originalPrice: Number(form.originalPrice) || null,
+      gsm: Number(form.gsm) || null,
+      featured: form.featured === 'true',
+      isFeatured: form.featured === 'true',
+      isActive: true,   // ← FIX: always mark active so it shows in shop
+      sizes: allSizes,
+      variants,
+      colors: ['#080808'],
+      tags: [],
+      heroSlide: form.featured === 'true',
+      slug: form.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      totalStock: totalStockVal,
+    }
 
     const token = localStorage.getItem('nox_token') || ''
     if (token && !token.startsWith('demo-')) {
@@ -454,7 +479,9 @@ export default function Admin() {
         }
         const url = targetId ? `/api/products/${targetId}` : '/api/products'
         const method = targetId ? 'PUT' : 'POST'
-        const { _id, _mongoId, id, ...cleanData } = data
+        // Strip frontend-only fields before sending to backend
+        const { _id, _mongoId, id, sizeStocks, customSizes, ...cleanData } = data
+        cleanData.isActive = true  // ensure it survives the destructure
         const res = await fetch(url, {
           method,
           headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
@@ -463,23 +490,28 @@ export default function Admin() {
         if (res.ok) {
           const resData = await res.json()
           if (resData.product && resData.product._id) {
+            // ← FIX: sync the backend _id into data so localStorage uses real ID
             data._mongoId = resData.product._id
-            data.totalStock = resData.product.totalStock
+            data.id = resData.product._id
+            data.totalStock = resData.product.totalStock ?? totalStockVal
           }
-        }else {
-  const errData = await res.json()
-  showToast('Database Error', errData.error || 'Failed to save to cloud')
-  setSaving(false)
-  return 
+        } else {
+          const errData = await res.json().catch(() => ({}))
+          showToast('Database Error', errData.error || 'Failed to save to cloud')
+          setSaving(false)
+          return  // ← FIX: stop — don't save ghost product locally if backend rejected it
         }
       } catch (err) {
         showToast('Connection Error', 'Could not save to database')
+        setSaving(false)
+        return  // ← FIX: stop — don't save if backend unreachable
       }
     }
 
     let updated
     if (prodModal === 'new') {
-      data.id = data._mongoId || ('local-' + Date.now())
+      // Only reach here if backend save succeeded (or user has no token)
+      data.id = data._mongoId || data.id || ('local-' + Date.now())
       data.images = []
       data._imageRecords = []
       updated = [...products, data]
@@ -617,7 +649,6 @@ export default function Admin() {
                     {tableProducts.length === 0
                       ? <tr><td colSpan={8} style={{ ...td, textAlign:'center', padding:'40px', color:'var(--text-dim)' }}>No products found</td></tr>
                       : tableProducts.map(p => {
-                          // Compute discount % for each row
                           const rowPct = p.originalPrice && p.price && Number(p.originalPrice) > Number(p.price)
                             ? Math.round(((Number(p.originalPrice) - Number(p.price)) / Number(p.originalPrice)) * 100)
                             : null
@@ -633,7 +664,6 @@ export default function Admin() {
                               <td style={td}>
                                 <span style={{ background:'var(--surface2)', padding:'3px 8px', fontSize:'9px' }}>{p.category}</span>
                               </td>
-                              {/* ── Price cell with MRP + sale + discount badge ── */}
                               <td style={{ ...td, fontFamily:'var(--font-m)', fontSize:'12px' }}>
                                 {p.originalPrice && (
                                   <div style={{ color:'var(--text-dim)', fontSize:'10px', textDecoration:'line-through' }}>₹{p.originalPrice}</div>
@@ -832,13 +862,11 @@ export default function Admin() {
                 <div style={fg}><label style={lbl}>Product Name *</label><input style={inp} placeholder="e.g. Flame Co-ord Set" value={form.name} onChange={setF('name')} /></div>
                 <div style={fg}><label style={lbl}>Category *</label><select style={inp} value={form.category} onChange={setF('category')}><option value="">Select...</option>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
 
-                {/* ── MRP field ── */}
                 <div style={fg}>
                   <label style={lbl}>Original Price (₹) — MRP</label>
                   <input style={inp} type="number" placeholder="e.g. 1999 (leave blank if no discount)" value={form.originalPrice} onChange={setF('originalPrice')} />
                 </div>
 
-                {/* ── Sale price + live discount badge ── */}
                 <div style={fg}>
                   <label style={lbl}>Sale Price (₹) *</label>
                   <input style={inp} type="number" placeholder="e.g. 1299" value={form.price} onChange={setF('price')} />
@@ -863,7 +891,6 @@ export default function Admin() {
               <div style={fg}><label style={lbl}>Description *</label><textarea style={{ ...inp, resize:'vertical', minHeight:'90px' }} value={form.description} onChange={setF('description')} /></div>
               <div style={fg}><label style={lbl}>Featured on Homepage</label><select style={inp} value={form.featured} onChange={setF('featured')}><option value="false">No</option><option value="true">Yes</option></select></div>
 
-              {/* ── Per-Size Stock ─────────────────── */}
               <div style={{ ...fg, gridColumn: '1 / -1' }}>
                 <label style={lbl}>Stock Per Size</label>
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:'10px' }}>
@@ -910,7 +937,9 @@ export default function Admin() {
 
               <div style={{ display:'flex', gap:'12px', justifyContent:'flex-end', marginTop:'8px' }}>
                 <button className="btn-ghost" onClick={() => setProdModal(null)}>Cancel</button>
-                <button className="btn-primary" onClick={saveForm}>Save Product →</button>
+                <button className="btn-primary" onClick={saveForm} disabled={saving} style={{ opacity: saving ? 0.6 : 1 }}>
+                  {saving ? 'Saving...' : 'Save Product →'}
+                </button>
               </div>
             </div>
           </div>
