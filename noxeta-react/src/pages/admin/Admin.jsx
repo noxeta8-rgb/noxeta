@@ -482,6 +482,10 @@ export default function Admin() {
         // Strip frontend-only fields before sending to backend
         const { _id, _mongoId, id, sizeStocks, customSizes, ...cleanData } = data
         cleanData.isActive = true  // ensure it survives the destructure
+        // FIX: empty string is not a valid enum value in MongoDB —
+        // send null for badge and omit fit entirely when not set.
+        if (!cleanData.fit) delete cleanData.fit
+        if (!cleanData.badge) cleanData.badge = null
         const res = await fetch(url, {
           method,
           headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
