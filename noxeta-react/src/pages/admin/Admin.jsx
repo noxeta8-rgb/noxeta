@@ -15,9 +15,13 @@ const initProducts = () => {
   return []
 }
 
+const DEFAULT_SIZES = ['S', 'M', 'L', 'XL', 'XXL']
+
 const emptyForm = {
   name:'', category:'', price:'', originalPrice:'',
-  badge:'', material:'', gsm:'', fit:'', description:'', featured:'false', stock:''
+  badge:'', material:'', gsm:'', fit:'', description:'', featured:'false',
+  sizeStocks: { S: '', M: '', L: '', XL: '', XXL: '' },
+  customSizes: '',
 }
 
 // ── Compress image to small JPEG before storing ──────────────
@@ -470,18 +474,31 @@ export default function Admin() {
     if (id === 'new') { setForm(emptyForm); setProdModal('new'); return }
     const p = products.find(x => x.id === id)
     if (!p) return
-    setForm({ name:p.name, category:p.category, price:p.price, originalPrice:p.originalPrice||'', badge:p.badge||'', material:p.material||'', gsm:p.gsm||'', fit:p.fit||'', description:p.description, featured:(p.isFeatured ?? p.featured)?'true':'false', stock:p.totalStock ?? p.stock ?? '' })
+    // Build sizeStocks from variants
+    const sizeStocks = { S: '', M: '', L: '', XL: '', XXL: '' }
+    if (Array.isArray(p.variants)) {
+      p.variants.forEach(v => { if (v.size in sizeStocks) sizeStocks[v.size] = String(v.stock || '') })
+    }
+    setForm({ name:p.name, category:p.category, price:p.price, originalPrice:p.originalPrice||'', badge:p.badge||'', material:p.material||'', gsm:p.gsm||'', fit:p.fit||'', description:p.description, featured:(p.isFeatured ?? p.featured)?'true':'false', sizeStocks, customSizes:'' })
     setProdModal(id)
   }
 
   const saveForm = async () => {
     if (!form.name || !form.category || !form.price || !form.description) { showToast('Missing fields', 'Name, category, price and description are required'); return }
     setSaving(true)
-    const totalStockVal = Number(form.stock) || 0;
-    const perSize = Math.max(0, Math.floor(totalStockVal / 5));
-    const sizesArr = ['S','M','L','XL','XXL'];
-    const variants = sizesArr.map((size, i) => ({ size, stock: i === 0 ? perSize + (totalStockVal % 5) : perSize }));
-    const data = { ...form, price:Number(form.price), originalPrice:Number(form.originalPrice)||null, gsm:Number(form.gsm)||null, featured:form.featured==='true', isFeatured:form.featured==='true', sizes:sizesArr, variants, colors:['#080808'], tags:[], heroSlide:form.featured==='true', slug:form.name.toLowerCase().replace(/[^a-z0-9]+/g,'-'), totalStock: totalStockVal }
+
+    // Build variants from per-size stock inputs + optional custom sizes
+    const extraSizes = form.customSizes
+      ? form.customSizes.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
+      : []
+    const allSizes = [...DEFAULT_SIZES, ...extraSizes.filter(s => !DEFAULT_SIZES.includes(s))]
+    const variants = allSizes.map(size => ({
+      size,
+      stock: Number(form.sizeStocks?.[size] || 0),
+    }))
+    const totalStockVal = variants.reduce((s, v) => s + v.stock, 0)
+
+    const data = { ...form, price:Number(form.price), originalPrice:Number(form.originalPrice)||null, gsm:Number(form.gsm)||null, featured:form.featured==='true', isFeatured:form.featured==='true', sizes:allSizes, variants, colors:['#080808'], tags:[], heroSlide:form.featured==='true', slug:form.name.toLowerCase().replace(/[^a-z0-9]+/g,'-'), totalStock: totalStockVal }
     
     const token = localStorage.getItem('nox_token') || ''
     if (token && !token.startsWith('demo-')) {
@@ -647,8 +664,6 @@ export default function Admin() {
                 ))}
               </div>
 
-
-
               <div style={{ display:'flex', gap:'12px', marginBottom:'20px' }}>
                 <input placeholder="Search products..." value={search} onChange={e => setSearch(e.target.value)} style={{ ...inp, maxWidth:'320px', fontSize:'11px' }} />
                 <select value={filterCat} onChange={e => setFilterCat(e.target.value)} style={{ ...inp, width:'200px' }}>
@@ -805,9 +820,6 @@ export default function Admin() {
               <button onClick={() => setImgModal(null)} style={{ background:'none', border:'none', color:'var(--text-dim)', fontSize:'18px', cursor:'pointer' }}>✕</button>
             </div>
             <div style={{ padding:'28px' }}>
-
-
-
               <div style={{ border:'2px dashed var(--border)', padding:'36px', textAlign:'center', marginBottom:'24px', transition:'border-color .2s' }}
                 onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor='var(--accent)' }}
                 onDragLeave={e => e.currentTarget.style.borderColor='var(--border)'}
@@ -866,7 +878,52 @@ export default function Admin() {
               </div>
               <div style={fg}><label style={lbl}>Description *</label><textarea style={{ ...inp, resize:'vertical', minHeight:'90px' }} value={form.description} onChange={setF('description')} /></div>
               <div style={fg}><label style={lbl}>Featured on Homepage</label><select style={inp} value={form.featured} onChange={setF('featured')}><option value="false">No</option><option value="true">Yes</option></select></div>
-              <div style={fg}><label style={lbl}>Total Stock *</label><input style={inp} type="number" placeholder="Enter total stock available" value={form.stock} onChange={setF('stock')} /></div>
+
+              {/* ── Per-Size Stock ─────────────────── */}
+              <div style={{ ...fg, gridColumn: '1 / -1' }}>
+                <label style={lbl}>Stock Per Size</label>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:'10px' }}>
+                  {DEFAULT_SIZES.map(size => (
+                    <div key={size}>
+                      <div style={{ fontFamily:'var(--font-m)', fontSize:'9px', letterSpacing:'2px', color:'var(--text-dim)', marginBottom:'5px', textAlign:'center' }}>{size}</div>
+                      <input
+                        style={{ ...inp, textAlign:'center', padding:'10px 6px' }}
+                        type="number" min="0" placeholder="0"
+                        value={form.sizeStocks?.[size] ?? ''}
+                        onChange={e => setForm(f => ({ ...f, sizeStocks: { ...f.sizeStocks, [size]: e.target.value } }))}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop:'8px', display:'flex', alignItems:'center', gap:'8px' }}>
+                  <div style={{ fontFamily:'var(--font-m)', fontSize:'9px', letterSpacing:'1px', color:'var(--text-dim)', flexShrink:0 }}>CUSTOM SIZES (comma-separated):</div>
+                  <input
+                    style={{ ...inp, fontSize:'11px', flex:1 }}
+                    placeholder="e.g. XS, 3XL, 4XL"
+                    value={form.customSizes || ''}
+                    onChange={e => setForm(f => ({ ...f, customSizes: e.target.value }))}
+                  />
+                </div>
+                {form.customSizes && form.customSizes.split(',').map(s => s.trim().toUpperCase()).filter(Boolean).map(size => (
+                  <div key={size} style={{ marginTop:'8px', display:'grid', gridTemplateColumns:'80px 1fr', gap:'10px', alignItems:'center' }}>
+                    <div style={{ fontFamily:'var(--font-m)', fontSize:'9px', letterSpacing:'2px', color:'var(--accent)', textAlign:'center', border:'1px solid var(--accent)', padding:'6px' }}>{size}</div>
+                    <input
+                      style={{ ...inp, textAlign:'center' }}
+                      type="number" min="0" placeholder="0"
+                      value={form.sizeStocks?.[size] ?? ''}
+                      onChange={e => setForm(f => ({ ...f, sizeStocks: { ...f.sizeStocks, [size]: e.target.value } }))}
+                    />
+                  </div>
+                ))}
+                <div style={{ marginTop:'10px', fontFamily:'var(--font-m)', fontSize:'10px', color:'var(--text-dim)' }}>
+                  Total stock: <span style={{ color:'var(--accent)' }}>
+                    {(Object.values(form.sizeStocks || {}).reduce((s, v) => s + (Number(v) || 0), 0) +
+                      (form.customSizes ? form.customSizes.split(',').map(s=>s.trim().toUpperCase()).filter(Boolean).reduce((s,size) => s + (Number(form.sizeStocks?.[size])||0), 0) : 0)
+                    )}
+                  </span>
+                </div>
+              </div>
+
               <div style={{ display:'flex', gap:'12px', justifyContent:'flex-end', marginTop:'8px' }}>
                 <button className="btn-ghost" onClick={() => setProdModal(null)}>Cancel</button>
                 <button className="btn-primary" onClick={saveForm}>Save Product →</button>
