@@ -237,6 +237,7 @@ export default function Admin() {
             images: validImageStrings,
             heroSlide: p.heroSlide || validImageStrings.length > 0,
             stock: calcStock,
+            featured: p.isFeatured ?? false,
           }
         })
         save(formatted, { silent: true })
