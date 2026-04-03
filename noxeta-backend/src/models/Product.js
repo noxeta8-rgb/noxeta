@@ -25,7 +25,7 @@ const productSchema = new mongoose.Schema({
     type: String,
     required: true,
     enum: ['Track Pants', 'Tees', 'Acid Wash Tees',
-           'Co-ord Sets', 'Waffle T-Shirts', 'Tank Tops','Compression'],
+           'Cod Sets', 'Waffle T-Shirts', 'Tank Tops','Compression'],
   },
 
   // ── IMAGES (the key feature — supports multiple for slider) ──
