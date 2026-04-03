@@ -300,8 +300,8 @@ export default function Home() {
       {/* Ticker */}
       <div className="ticker">
         <div className="ticker-inner">
-          {['TRACK PANTS','OVERSIZED TEES','COD SET','ACID WASH','WAFFLE TEES','TANK TOPS',
-            'TRACK PANTS','OVERSIZED TEES','COD SET','ACID WASH','WAFFLE TEES','TANK TOPS'].map((t, i) => (
+          {['TRACK PANTS','OVERSIZED TEES','COD SET','ACID WASH','WAFFLE TEES','TANK TOPS','compression',
+            'TRACK PANTS','OVERSIZED TEES','COD SET','ACID WASH','WAFFLE TEES','TANK TOPS','compression'].map((t, i) => (
             <span key={i}>{t} <b>✦</b></span>
           ))}
         </div>
