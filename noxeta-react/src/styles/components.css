@@ -48,7 +48,7 @@ nav.nox-nav.scrolled { height:58px; }
 .card-quick-add { position:absolute; bottom:0; left:0; right:0; background:rgba(8,8,8,.93); backdrop-filter:blur(10px); padding:12px; text-align:center; font-family:var(--font-m); font-size:9px; letter-spacing:2px; color:var(--accent); text-transform:uppercase; transform:translateY(100%); transition:transform var(--transition); border-top:1px solid var(--border); z-index:3; cursor:pointer; }
 .product-card:hover .card-quick-add { transform:translateY(0); }
 .card-info { padding:18px; }
-.card-name { font-family:var(--font-b); font-size:15px; color:var(--text); margin-bottom:5px; }
+.card-name { font-family:var(--font-b); font-size:15px; color:var(--text); margin-bottom:5px; word-break:break-word; overflow-wrap:break-word; }
 .card-price { font-family:var(--font-m); font-size:13px; color:var(--accent); }
 .card-price s { color:var(--text-dim); margin-right:6px; font-size:11px; }
 .card-colors { display:flex; gap:5px; margin-top:8px; }
