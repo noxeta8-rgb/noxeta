@@ -31,7 +31,7 @@ export default function ProductModal({ product: p, onClose }) {
         <div className="product-modal-inner">
           {/* Left — images */}
           <div>
-            <div className="pd-slider" style={{ overflow:'hidden' }}>
+          <div className="pd-slider" style={{ overflow:'hidden', transform:'translateZ(0)', WebkitMaskImage:'-webkit-radial-gradient(white, black)' }}>
               <ImageSlider
                 images={p.images || []}
                 slideClass="pd-slide"
