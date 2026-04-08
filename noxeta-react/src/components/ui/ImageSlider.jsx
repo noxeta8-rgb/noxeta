@@ -35,16 +35,20 @@ export default function ImageSlider({
 
   return (
     <>
-      <div style={{ display:'flex', height:'100%', transform:`translateX(-${idx*100}%)`, transition:'transform .5s cubic-bezier(.77,0,.18,1)' }}>
-        {images.map((src, i) => (
-          <div key={i} className={slideClass} style={{ minWidth:'100%', height:'100%', flexShrink:0 }}>
-            <img src={src} alt={`View ${i+1}`} loading={i===0?'eager':'lazy'}
-              style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'top' }}
-              onError={e => { e.target.style.display='none'; e.target.parentElement.style.background='var(--surface2)' }}
-            />
-          </div>
-        ))}
+      {/* ✅ ADDED: outer wrapper forces Safari to clip overflow */}
+      <div style={{ width:'100%', height:'100%', overflow:'hidden', position:'relative' }}>
+        <div style={{ display:'flex', height:'100%', transform:`translateX(-${idx*100}%)`, transition:'transform .5s cubic-bezier(.77,0,.18,1)', willChange:'transform' }}>
+          {images.map((src, i) => (
+            <div key={i} className={slideClass} style={{ minWidth:'100%', height:'100%', flexShrink:0 }}>
+              <img src={src} alt={`View ${i+1}`} loading={i===0?'eager':'lazy'}
+                style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'top' }}
+                onError={e => { e.target.style.display='none'; e.target.parentElement.style.background='var(--surface2)' }}
+              />
+            </div>
+          ))}
+        </div>
       </div>
+      {/* ✅ ADDED: closing </div> for the wrapper above */}
 
       {/* Dots */}
       {images.length > 1 && (
