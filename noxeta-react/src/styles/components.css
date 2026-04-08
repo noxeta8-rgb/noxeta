@@ -31,7 +31,7 @@ nav.nox-nav.scrolled { height:58px; }
 .mobile-nav a:hover { color:var(--accent); }
 
 /* PRODUCT CARD */
-.products-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:20px; }
+.products-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:20px; min-width:0; }
 .product-card { background:var(--surface); cursor:pointer; transition:transform var(--transition); position:relative; overflow:hidden; }
 .product-card:hover { transform:translateY(-8px); }
 .card-img-wrap { position:relative; overflow:hidden; aspect-ratio:3/4; background:var(--surface2); -webkit-mask-image:-webkit-radial-gradient(white,black); transform:translateZ(0); }
