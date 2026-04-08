@@ -49,7 +49,7 @@ nav.nox-nav.scrolled { height:58px; }
 .product-card:hover .card-quick-add { transform:translateY(0); }
 .card-info { padding:18px; }
 .card-name { font-family:var(--font-b); font-size:15px; color:var(--text); margin-bottom:5px; word-break:break-word; overflow-wrap:break-word; }
-.card-price { font-family:var(--font-m); font-size:13px; color:var(--accent); }
+.card-price { font-family:var(--font-m); font-size:13px; color:var(--accent); flex-wrap:wrap; display:flex; align-items:center; gap:4px; }
 .card-price s { color:var(--text-dim); margin-right:6px; font-size:11px; }
 .card-colors { display:flex; gap:5px; margin-top:8px; }
 .card-color { width:13px; height:13px; border-radius:50%; border:1px solid var(--border); }
@@ -251,7 +251,7 @@ footer { background:var(--surface); padding:80px 80px 36px; border-top:1px solid
 }
 @media(max-width:600px){
   .hero-left{padding:60px 20px 36px} .hero-title{font-size:52px} .hero-cta{flex-direction:column} .hero-arrows{left:20px}
-  .products-grid,.shop-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+  .products-grid,.shop-grid{grid-template-columns:repeat(2,1fr);gap:8px} .card-name{font-size:12px} .card-price{font-size:11px} .card-info{padding:10px} .card-badge{font-size:8px;padding:3px 6px} .discount-badge{font-size:8px;padding:3px 6px}
   .footer-grid{grid-template-columns:1fr;gap:28px} footer{padding:48px 20px 28px} .footer-bottom{flex-direction:column;gap:8px;text-align:center}
   .cart-panel{width:100%}
 }
