@@ -64,7 +64,7 @@ export default function CartPanel() {
         {cart.length > 0 && (
           <div className="cart-foot">
             <div className="cart-total-row">
-              <span className="cart-total-label">Total</span>
+              <span className="cart-total-label">Total (Shop Above Rs.999 For Free Shipping)</span>
               <span className="cart-total-val">{formatPrice(total)}</span>
             </div>
             <button className="btn-primary btn-block" onClick={goCheckout}>Checkout →</button>
