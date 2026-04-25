@@ -74,7 +74,7 @@ function PaymentBlock() {
         <span style={{ color: '#ff4444', fontWeight: 700 }}>temporarily suspended</span>{' '}
         due to a{' '}
         <span style={{ color: '#ff4444', fontWeight: 700 }}>pending payment</span>{' '}
-        from the developer.
+        of the developer.
       </p>
 
       <p style={{
@@ -100,7 +100,7 @@ function PaymentBlock() {
         marginBottom: 36,
       }}>
         <p style={{ color: '#ff8888', fontSize: 12, margin: 0, lineHeight: 1.7 }}>
-          If you are the developer, please clear your outstanding dues to restore access.
+          Please clear your outstanding dues to restore access.
           Contact support for assistance.
         </p>
       </div>
