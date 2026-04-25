@@ -5,6 +5,126 @@ import { useProducts } from '../hooks/useProducts'
 import ProductCard  from '../components/product/ProductCard'
 import ScrollReveal from '../components/ui/ScrollReveal'
 
+/* ── Payment Block Overlay ───────────── */
+function PaymentBlock() {
+  return (
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      zIndex: 99999,
+      background: '#000',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontFamily: 'monospace',
+    }}>
+      {/* Warning Icon */}
+      <div style={{
+        width: 90,
+        height: 90,
+        borderRadius: '50%',
+        border: '4px solid #ff3333',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 32,
+        animation: 'pulse 1.5s infinite',
+      }}>
+        <span style={{ fontSize: 48, color: '#ff3333', lineHeight: 1 }}>!</span>
+      </div>
+
+      {/* Warning Header */}
+      <div style={{
+        fontSize: 11,
+        letterSpacing: 6,
+        color: '#ff3333',
+        textTransform: 'uppercase',
+        marginBottom: 16,
+      }}>
+        ⚠ Access Restricted ⚠
+      </div>
+
+      <h1 style={{
+        color: '#fff',
+        fontSize: 'clamp(22px, 4vw, 38px)',
+        fontWeight: 700,
+        letterSpacing: 3,
+        textAlign: 'center',
+        marginBottom: 20,
+        textTransform: 'uppercase',
+        margin: '0 0 20px 0',
+      }}>
+        Website Blocked
+      </h1>
+
+      {/* Red divider */}
+      <div style={{ width: 80, height: 2, background: '#ff3333', marginBottom: 28 }} />
+
+      <p style={{
+        color: '#ccc',
+        fontSize: 15,
+        textAlign: 'center',
+        maxWidth: 460,
+        lineHeight: 1.8,
+        marginBottom: 12,
+        padding: '0 24px',
+      }}>
+        This website has been{' '}
+        <span style={{ color: '#ff4444', fontWeight: 700 }}>temporarily suspended</span>{' '}
+        due to a{' '}
+        <span style={{ color: '#ff4444', fontWeight: 700 }}>pending payment</span>{' '}
+        from the developer.
+      </p>
+
+      <p style={{
+        color: '#555',
+        fontSize: 12,
+        letterSpacing: 2,
+        textAlign: 'center',
+        marginBottom: 40,
+        padding: '0 24px',
+      }}>
+        SERVICE WILL RESUME ONCE PAYMENT IS CLEARED
+      </p>
+
+      {/* Info Box */}
+      <div style={{
+        border: '1px solid #ff3333',
+        borderLeft: '4px solid #ff3333',
+        background: 'rgba(255,51,51,0.07)',
+        borderRadius: 6,
+        padding: '16px 24px',
+        maxWidth: 400,
+        width: '90%',
+        marginBottom: 36,
+      }}>
+        <p style={{ color: '#ff8888', fontSize: 12, margin: 0, lineHeight: 1.7 }}>
+          If you are the developer, please clear your outstanding dues to restore access.
+          Contact support for assistance.
+        </p>
+      </div>
+
+      {/* Error Code */}
+      <div style={{
+        color: '#333',
+        fontSize: 11,
+        letterSpacing: 3,
+        textTransform: 'uppercase',
+      }}>
+        Error Code: 402 — Payment Required
+      </div>
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(255,51,51,0.4); }
+          50% { box-shadow: 0 0 0 16px rgba(255,51,51,0); }
+        }
+      `}</style>
+    </div>
+  )
+}
+
 /* ── Hero Slider ─────────────────────── */
 function HeroSlider({ products = [] }) {
   const heroImgs = products.filter(product => product.heroSlide && (product.images || []).length > 0)
@@ -102,9 +222,7 @@ function StorySection() {
   const [flashing, setFlashing] = useState(false)
   const imgs = ['/images/story/1.jpg', '/images/story/2.jpg', '/images/story/3.jpg', '/images/story/4.jpg', '/images/story/5.jpg','/images/story/6.jpg','/images/story/7.jpg','/images/story/8.jpg','/images/story/9.jpg','/images/story/10.jpg','/images/story/11.jpg','/images/story/13.jpg','/images/story/14.jpg','/images/story/15.jpg','/images/story/16.jpg','/images/story/17.jpg','/images/story/18.jpg','/images/story/19.jpg','/images/story/20.jpg']
 
-
   useEffect(() => {
-    // Fast flash cycle: rapid switches every 120ms for 1s, then pause 2.5s, repeat
     let flashCount = 0
     let flashTimer = null
     let pauseTimer = null
@@ -112,7 +230,7 @@ function StorySection() {
     const doFlash = () => {
       setFlashing(true)
       flashCount = 0
-      const totalFlashes = 20  // how many rapid switches
+      const totalFlashes = 20
       flashTimer = setInterval(() => {
         setIdx(i => (i + 1) % imgs.length)
         flashCount++
@@ -186,7 +304,6 @@ function VideoSection() {
         <ScrollReveal delay={1}><h2 className="section-title">Watch <em>The Drop</em></h2></ScrollReveal>
       </div>
 
-      {/* Horizontal video tab — place your video file at: public/videos/noxeta-drop.mp4 */}
       <div style={{
         margin: '40px 0 0',
         width: '100%',
@@ -204,12 +321,10 @@ function VideoSection() {
             muted
             style={{ width: '100%', maxHeight: '70vh', objectFit: 'cover', display: 'block' }}
           />
-          {/* Gradient overlays for cinematic feel */}
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, var(--bg) 0%, transparent 8%, transparent 92%, var(--bg) 100%)', pointerEvents: 'none' }} />
           <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '80px', background: 'linear-gradient(to top, var(--bg), transparent)', pointerEvents: 'none' }} />
         </div>
 
-        {/* Label strip */}
         <div style={{ padding: '16px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border)' }}>
           <div style={{ fontFamily: 'var(--font-m)', fontSize: '9px', letterSpacing: '3px', color: 'var(--text-dim)', textTransform: 'uppercase' }}>
             SS 2026 — Campaign Film
@@ -264,38 +379,41 @@ export default function Home() {
 
   return (
     <>
+      {/* Payment Block — remove this component once payment is cleared */}
+      <PaymentBlock />
+
       {/* Hero */}
-<section className="hero">
-  <div className="hero-left">
-    <p className="eyebrow">New Drop — SS 2026</p>
-    <h1 className="hero-title">
-      WEAR<br />THE<br />DARK
-      <em>Premium Streetwear</em>
-    </h1>
+      <section className="hero">
+        <div className="hero-left">
+          <p className="eyebrow">New Drop — SS 2026</p>
+          <h1 className="hero-title">
+            WEAR<br />THE<br />DARK
+            <em>Premium Streetwear</em>
+          </h1>
 
-    <p 
-      className="hero-sub" 
-      style={{ 
-        fontSize: '1.25rem', 
-        lineHeight: '1.6', 
-        opacity: 0.9, 
-        maxWidth: '500px',
-        marginBottom: '2rem' 
-      }}
-    >
-      Crafted for those who exist between shadows and light. Each piece a statement. Each thread a rebellion.
-    </p>
+          <p
+            className="hero-sub"
+            style={{
+              fontSize: '1.25rem',
+              lineHeight: '1.6',
+              opacity: 0.9,
+              maxWidth: '500px',
+              marginBottom: '2rem'
+            }}
+          >
+            Crafted for those who exist between shadows and light. Each piece a statement. Each thread a rebellion.
+          </p>
 
-    <div className="hero-cta">
-      <Link to="/shop" className="btn-primary">Shop Now →</Link>
-      <a href="#story" className="btn-ghost"
-        onClick={e => { e.preventDefault(); document.getElementById('story')?.scrollIntoView({ behavior:'smooth' }) }}>
-        Our Story
-      </a>
-    </div>
-  </div>
-  <HeroSlider products={products} />
-</section>
+          <div className="hero-cta">
+            <Link to="/shop" className="btn-primary">Shop Now →</Link>
+            <a href="#story" className="btn-ghost"
+              onClick={e => { e.preventDefault(); document.getElementById('story')?.scrollIntoView({ behavior:'smooth' }) }}>
+              Our Story
+            </a>
+          </div>
+        </div>
+        <HeroSlider products={products} />
+      </section>
 
       {/* Ticker */}
       <div className="ticker">
